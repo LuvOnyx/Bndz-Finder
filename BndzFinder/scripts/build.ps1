@@ -5,35 +5,28 @@
 .DESCRIPTION
     Builds the complete solution, optionally publishes a self-contained portable bundle.
     There is NO dist/ folder — output goes to bin/ or bin/Publish/Portable/.
+    Restore automatically retries on transient network errors and resumes from the
+    local NuGet cache (already-downloaded packages are not re-fetched).
 .PARAMETER Configuration
     Debug or Release (default: Release)
 .PARAMETER Publish
     Publish self-contained portable build to src/*/bin/Publish/Portable/win-x64
 .PARAMETER SkipTests
     Skip running unit tests
+.PARAMETER NetworkRetries
+    How many times to retry restore on transient WiFi/NuGet failures (default: 15)
 #>
 param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
     [switch]$Publish,
-    [switch]$SkipTests
+    [switch]$SkipTests,
+    [int]$NetworkRetries = 15
 )
 
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $Sln = Join-Path $Root 'BndzFinder.sln'
-
-function Invoke-DotNet {
-    param(
-        [Parameter(Mandatory = $true, ValueFromRemainingArguments = $true)]
-        [string[]]$Arguments
-    )
-
-    & dotnet @Arguments
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
-}
 
 function Test-NuGetConnectivity {
     foreach ($hostName in @('www.nuget.org', 'api.nuget.org')) {
@@ -56,6 +49,125 @@ function Test-WindowsAppSdkCached {
     return Test-Path $packageRoot
 }
 
+function Test-TransientNetworkError {
+    param([string]$Output)
+
+    $patterns = @(
+        'NU1301',
+        'NU1101',
+        'NU1102',
+        'No such host is known',
+        'Unable to load the service index',
+        'Connection refused',
+        'timed out',
+        'timeout',
+        'A connection attempt failed',
+        'The SSL connection could not be established',
+        '503',
+        '502',
+        '504',
+        'host is down',
+        'network is unreachable'
+    )
+
+    foreach ($pattern in $patterns) {
+        if ($Output -like "*$pattern*") {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Wait-ForNuGetConnectivity {
+    param(
+        [int]$MaxWaitSeconds = 1800,
+        [string]$Reason = 'Waiting for NuGet connectivity'
+    )
+
+    if (Test-NuGetConnectivity) {
+        return $true
+    }
+
+    Write-Host "$Reason (Ctrl+C to cancel)..." -ForegroundColor Yellow
+    $waited = 0
+    while ($waited -lt $MaxWaitSeconds) {
+        Start-Sleep -Seconds 5
+        $waited += 5
+        if (Test-NuGetConnectivity) {
+            Write-Host "Network is back — continuing." -ForegroundColor Green
+            return $true
+        }
+
+        if ($waited % 30 -eq 0) {
+            Write-Host "  still offline (${waited}s)..." -ForegroundColor DarkGray
+        }
+    }
+
+    return $false
+}
+
+function Invoke-DotNet {
+    param(
+        [Parameter(Mandatory = $true, ValueFromRemainingArguments = $true)]
+        [string[]]$Arguments
+    )
+
+    & dotnet @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+}
+
+function Invoke-DotNetWithRetry {
+    param(
+        [string]$Label,
+        [int]$MaxAttempts = 1,
+        [int]$InitialDelaySeconds = 5,
+        [Parameter(Mandatory = $true, ValueFromRemainingArguments = $true)]
+        [string[]]$Arguments
+    )
+
+    $attempt = 0
+    $delay = $InitialDelaySeconds
+
+    while ($true) {
+        $attempt++
+        if ($MaxAttempts -gt 1) {
+            Write-Host "==> $Label (attempt $attempt of $MaxAttempts)..." -ForegroundColor Cyan
+        }
+        else {
+            Write-Host "==> $Label..." -ForegroundColor Cyan
+        }
+
+        $captured = New-Object System.Collections.Generic.List[string]
+        & dotnet @Arguments 2>&1 | ForEach-Object {
+            $line = "$_"
+            $captured.Add($line)
+            Write-Host $line
+        }
+
+        if ($LASTEXITCODE -eq 0) {
+            return
+        }
+
+        $text = ($captured -join [Environment]::NewLine)
+        if ($attempt -ge $MaxAttempts -or -not (Test-TransientNetworkError $text)) {
+            exit $LASTEXITCODE
+        }
+
+        Write-Host ""
+        Write-Host "Transient network issue during $Label." -ForegroundColor Yellow
+        Write-Host "NuGet keeps partial downloads in %USERPROFILE%\.nuget\packages — retry will resume, not restart from zero." -ForegroundColor DarkGray
+
+        [void](Wait-ForNuGetConnectivity -MaxWaitSeconds 600 -Reason 'Pausing until NuGet is reachable again')
+
+        Write-Host "Retrying in ${delay}s..." -ForegroundColor Yellow
+        Start-Sleep -Seconds $delay
+        $delay = [Math]::Min([int]($delay * 1.5), 90)
+    }
+}
+
 if (-not (Test-Path $Sln)) {
     Write-Host "ERROR: BndzFinder.sln not found at: $Sln" -ForegroundColor Red
     Write-Host ""
@@ -71,34 +183,29 @@ Write-Host "Project root: $Root" -ForegroundColor DarkGray
 
 if (-not (Test-NuGetConnectivity)) {
     if (Test-WindowsAppSdkCached) {
-        Write-Host "WARNING: NuGet is unreachable — continuing with cached packages only." -ForegroundColor Yellow
-        Write-Host "If restore fails, reconnect to the internet and run .\build.cmd again." -ForegroundColor Yellow
+        Write-Host "WARNING: NuGet is unreachable — will try cached packages and retry on blips." -ForegroundColor Yellow
         Write-Host ""
     }
     else {
-        Write-Host "ERROR: No internet and Windows App SDK is not cached yet." -ForegroundColor Red
+        Write-Host "NuGet is offline and Windows App SDK is not fully cached yet." -ForegroundColor Yellow
+        Write-Host "First restore downloads ~500MB+. The script will wait for your connection and auto-retry." -ForegroundColor Yellow
         Write-Host ""
-        Write-Host "First-time restore downloads ~500MB+ from NuGet (WindowsAppSDK, WinUI, SDK Build Tools)." -ForegroundColor Yellow
-        Write-Host "A good connection usually takes 5-15 minutes. Yours failed because WiFi/DNS dropped." -ForegroundColor Yellow
+        if (-not (Wait-ForNuGetConnectivity -MaxWaitSeconds 1800 -Reason 'Waiting for internet before first restore')) {
+            Write-Host "ERROR: Still offline after 30 minutes. Re-run .\build.cmd when WiFi is stable." -ForegroundColor Red
+            exit 1
+        }
         Write-Host ""
-        Write-Host "When back online:" -ForegroundColor Cyan
-        Write-Host "  1. ping www.nuget.org"
-        Write-Host "  2. .\build.cmd          # or .\run.cmd"
-        Write-Host ""
-        Write-Host "Do NOT clear the NuGet cache unless packages are corrupted — partial downloads can resume." -ForegroundColor DarkGray
-        Write-Host "See BndzFinder/docs/WINDOWS_DEV.md for NU1301 troubleshooting." -ForegroundColor DarkGray
-        exit 1
     }
 }
 
-Write-Host "==> Restoring BndzFinder.sln..." -ForegroundColor Cyan
-Invoke-DotNet restore $Sln
+Write-Host "Restore uses resilient retries ($NetworkRetries attempts) — brief WiFi drops should resume automatically." -ForegroundColor DarkGray
+Write-Host ""
 
-Write-Host "==> Building full solution ($Configuration)..." -ForegroundColor Cyan
-Invoke-DotNet build $Sln -c $Configuration --no-restore
+Invoke-DotNetWithRetry -Label 'Restoring BndzFinder.sln' -MaxAttempts $NetworkRetries -InitialDelaySeconds 8 restore $Sln
+
+Invoke-DotNetWithRetry -Label "Building full solution ($Configuration)" -MaxAttempts 3 -InitialDelaySeconds 5 build $Sln -c $Configuration --no-restore
 
 if (-not $SkipTests) {
-    Write-Host "==> Running tests..." -ForegroundColor Cyan
     Invoke-DotNet test $Sln -c $Configuration --no-build
 }
 
@@ -106,8 +213,8 @@ if ($Publish) {
     $AppOut = Join-Path $Root "src\BndzFinder.App\bin\Publish\Portable\win-x64"
     $HostOut = Join-Path $Root "src\BndzFinder.ShellHost\bin\Publish\Portable\win-x64"
 
-    Write-Host "==> Publishing BndzFinder.App to $AppOut..." -ForegroundColor Cyan
-    Invoke-DotNet publish (Join-Path $Root "src\BndzFinder.App\BndzFinder.App.csproj") `
+    Invoke-DotNetWithRetry -Label "Publishing BndzFinder.App to $AppOut" -MaxAttempts 5 -InitialDelaySeconds 10 `
+        publish (Join-Path $Root "src\BndzFinder.App\BndzFinder.App.csproj") `
         -c $Configuration `
         -r win-x64 `
         --self-contained true `
@@ -116,8 +223,8 @@ if ($Publish) {
         -p:WindowsAppSDKSelfContained=true `
         -o $AppOut
 
-    Write-Host "==> Publishing BndzFinder.ShellHost to $HostOut..." -ForegroundColor Cyan
-    Invoke-DotNet publish (Join-Path $Root "src\BndzFinder.ShellHost\BndzFinder.ShellHost.csproj") `
+    Invoke-DotNetWithRetry -Label "Publishing BndzFinder.ShellHost to $HostOut" -MaxAttempts 5 -InitialDelaySeconds 10 `
+        publish (Join-Path $Root "src\BndzFinder.ShellHost\BndzFinder.ShellHost.csproj") `
         -c $Configuration `
         -r win-x64 `
         --self-contained true `

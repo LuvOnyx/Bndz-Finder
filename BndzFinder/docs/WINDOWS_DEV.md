@@ -139,17 +139,25 @@ The **first** `dotnet restore` on a fresh clone is slow — that is normal.
 | Later restores (packages cached) | **10–30 seconds** |
 | Full Release build (after restore) | **2–5 minutes** |
 
-WinUI pulls large packages (`Microsoft.WindowsAppSDK`, `Microsoft.Windows.SDK.BuildTools`, CommunityToolkit WinUI, etc.). If WiFi drops mid-download you will see `NU1301` / `NU1101` / `No such host is known` after several minutes — **not a code bug**.
+WinUI pulls large packages (`Microsoft.WindowsAppSDK`, `Microsoft.Windows.SDK.BuildTools`, CommunityToolkit WinUI, etc.). Brief WiFi drops are handled automatically — see below.
 
-**When back online**, just re-run:
+### Flaky WiFi / provider outages
+
+`build.ps1` and `run.cmd` now:
+
+1. **Wait** for NuGet to come back if you start offline (up to 30 minutes)
+2. **Auto-retry** restore up to **15 times** on transient errors (`NU1301`, DNS blips, timeouts)
+3. **Resume** from `%USERPROFILE%\.nuget\packages` — packages already downloaded are **not** re-fetched
+
+You do **not** need to restart manually after a split-second dropout. Leave `.\run.cmd` running; it will pause and retry.
 
 ```powershell
-.\build.cmd
-# or
 .\run.cmd
+# Optional: more retries on very bad connections
+pwsh -ExecutionPolicy Bypass -File .\BndzFinder\scripts\build.ps1 -NetworkRetries 25
 ```
 
-Only clear the cache if restore keeps failing with corrupt-package errors:
+Only clear the cache if restore fails repeatedly with **corrupt package** errors:
 
 ```powershell
 dotnet nuget locals all --clear
