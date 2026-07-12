@@ -9,11 +9,20 @@ public partial class LaunchpadViewModel : ObservableObject
     private readonly ISettingsService _settings;
     private readonly AppCatalogService _catalog;
 
-    [ObservableProperty] private string _searchQuery = string.Empty;
-    [ObservableProperty] private IReadOnlyList<AppCatalogEntry> _allApps = [];
-    [ObservableProperty] private IReadOnlyList<AppCatalogEntry> _filteredApps = [];
-    [ObservableProperty] private int _currentPage;
-    [ObservableProperty] private bool _isOverlayVisible;
+    [ObservableProperty]
+    public partial string SearchQuery { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial IReadOnlyList<AppCatalogEntry> AllApps { get; set; } = [];
+
+    [ObservableProperty]
+    public partial IReadOnlyList<AppCatalogEntry> FilteredApps { get; set; } = [];
+
+    [ObservableProperty]
+    public partial int CurrentPage { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsOverlayVisible { get; set; }
 
     public int PageSize => 35;
     public int IconSize => _settings.Current.LaunchpadIconSize;
@@ -77,9 +86,9 @@ public partial class LaunchpadViewModel : ObservableObject
 
 public sealed class AppCatalogEntry
 {
-    public required string Id { get; init; }
-    public required string Name { get; init; }
-    public required string Path { get; init; }
+    public string Id { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public string Path { get; init; } = string.Empty;
     public string? IconPath { get; init; }
 }
 

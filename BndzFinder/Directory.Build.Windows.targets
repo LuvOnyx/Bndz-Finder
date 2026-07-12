@@ -1,7 +1,6 @@
 <Project>
-  <Import Project="..\..\Directory.Build.Windows.props" />
   <PropertyGroup>
-    <!-- WinUI class libraries: PRI is merged at the App project, not per-library packaging. -->
+    <!-- Reinforce PRI disable for WinUI class libraries (also set in Directory.Build.Windows.props). -->
     <MrtCoreEnablePriGeneration Condition="'$(OutputType)' != 'WinExe'">false</MrtCoreEnablePriGeneration>
     <GenerateLibraryLayout Condition="'$(OutputType)' != 'WinExe'">false</GenerateLibraryLayout>
   </PropertyGroup>

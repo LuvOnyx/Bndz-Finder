@@ -5,9 +5,8 @@
     <Description>MyDock window, fisheye layout, and D3D11 compositor.</Description>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250108002" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <PackageReference Include="Vortice.Direct3D11" Version="3.6.2" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <PackageReference Include="Vortice.Direct3D11" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\BndzFinder.Core\BndzFinder.Core.csproj" />

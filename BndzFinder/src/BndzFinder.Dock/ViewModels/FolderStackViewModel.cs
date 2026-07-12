@@ -11,11 +11,20 @@ public partial class FolderStackViewModel : ObservableObject
     private readonly FolderStackService _stacks;
     private readonly IIconPipeline _icons;
 
-    [ObservableProperty] private bool _isOpen;
-    [ObservableProperty] private FolderStackView _viewMode = FolderStackView.Automatic;
-    [ObservableProperty] private FolderSortMode _sortMode = FolderSortMode.Name;
-    [ObservableProperty] private IReadOnlyList<FolderStackEntry> _entries = [];
-    [ObservableProperty] private string _folderPath = string.Empty;
+    [ObservableProperty]
+    public partial bool IsOpen { get; set; }
+
+    [ObservableProperty]
+    public partial FolderStackView ViewMode { get; set; } = FolderStackView.Automatic;
+
+    [ObservableProperty]
+    public partial FolderSortMode SortMode { get; set; } = FolderSortMode.Name;
+
+    [ObservableProperty]
+    public partial IReadOnlyList<FolderStackEntry> Entries { get; set; } = [];
+
+    [ObservableProperty]
+    public partial string FolderPath { get; set; } = string.Empty;
 
     public FolderStackViewModel(string folderPath, FolderStackService? stacks = null, IIconPipeline? icons = null)
     {

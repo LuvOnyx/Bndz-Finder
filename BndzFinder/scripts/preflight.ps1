@@ -1,54 +1,54 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Quick pre-build checks before running .\run.cmd
+    Validates MSBuild wiring before a full Windows build.
 #>
+param(
+    [string]$Root = (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
+)
+
 $ErrorActionPreference = 'Stop'
-$Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-Set-Location $Root
+$failures = New-Object System.Collections.Generic.List[string]
 
-Write-Host "Bndz-Finder preflight" -ForegroundColor Cyan
-Write-Host "Project root: $Root" -ForegroundColor DarkGray
-Write-Host ""
-
-$ok = $true
-
-$sdk = (dotnet --version).Trim()
-Write-Host "dotnet --version : $sdk"
-if ($sdk -match '^10\.0\.') {
-    Write-Host "  OK — .NET 10 SDK active" -ForegroundColor Green
-}
-else {
-    Write-Host "  WARN — repo targets .NET 10 (global.json pins 10.0.200)" -ForegroundColor Yellow
+function Assert-FileContains {
+    param([string]$Path, [string]$Pattern, [string]$Message)
+    if (-not (Test-Path $Path)) {
+        $failures.Add("Missing file: $Path — $Message")
+        return
+    }
+    $content = Get-Content -Raw -Path $Path
+    if ($content -notmatch $Pattern) {
+        $failures.Add("$Message ($Path)")
+    }
 }
 
-Write-Host ""
-Write-Host "Installed SDKs:"
-dotnet --list-sdks
+$windowsProps = Join-Path $Root 'Directory.Build.Windows.props'
+$buildTargets = Join-Path $Root 'Directory.Build.targets'
+$packagesProps = Join-Path $Root 'Directory.Packages.props'
 
-$wasdk = Join-Path $env:USERPROFILE '.nuget\packages\microsoft.windowsappsdk\1.6.250108002'
-$buildTools = Join-Path $env:USERPROFILE '.nuget\packages\microsoft.windows.sdk.buildtools'
-Write-Host ""
-if (Test-Path $wasdk) { Write-Host "OK — Windows App SDK cached" -ForegroundColor Green }
-else { Write-Host "PENDING — Windows App SDK not cached (first restore downloads it)" -ForegroundColor Yellow }
+Assert-FileContains $windowsProps 'MrtCoreEnablePriGeneration' 'PRI generation must be disabled for WinUI class libraries'
+Assert-FileContains $buildTargets 'Directory\.Build\.Windows\.targets' 'Directory.Build.targets must import Windows targets shim'
+Assert-FileContains $packagesProps 'CommunityToolkit\.Mvvm' 'Central package management must define CommunityToolkit.Mvvm'
 
-if (Test-Path $buildTools) { Write-Host "OK — Windows SDK BuildTools cached" -ForegroundColor Green }
-else { Write-Host "PENDING — Windows SDK BuildTools not cached" -ForegroundColor Yellow }
+$winUiProjects = Get-ChildItem -Path (Join-Path $Root 'src') -Filter '*.csproj' -Recurse |
+    Where-Object {
+        $text = Get-Content -Raw $_.FullName
+        $text -match 'Directory\.Build\.Windows\.props'
+    }
 
-try {
-    [void][System.Net.Dns]::GetHostEntry('api.nuget.org')
-    Write-Host "OK — NuGet reachable" -ForegroundColor Green
-}
-catch {
-    Write-Host "WARN — NuGet unreachable (restore may fail)" -ForegroundColor Yellow
-    $ok = $false
-}
-
-Write-Host ""
-if ($ok) {
-    Write-Host "Preflight passed. Run: .\run.cmd" -ForegroundColor Green
-    exit 0
+foreach ($project in $winUiProjects) {
+    $text = Get-Content -Raw $project.FullName
+    if (($text | Select-String -Pattern 'CommunityToolkit\.Mvvm' -AllMatches).Matches.Count -gt 0) {
+        $failures.Add("Duplicate CommunityToolkit.Mvvm in $($project.Name) — remove per-project reference (use Directory.Build.Windows.props)")
+    }
 }
 
-Write-Host "Preflight failed. Fix items above before building." -ForegroundColor Red
-exit 1
+if ($failures.Count -gt 0) {
+    Write-Host 'Preflight FAILED:' -ForegroundColor Red
+    foreach ($item in $failures) {
+        Write-Host "  - $item" -ForegroundColor Yellow
+    }
+    exit 1
+}
+
+Write-Host 'Preflight OK — MSBuild wiring and package references look correct.' -ForegroundColor Green

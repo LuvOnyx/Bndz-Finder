@@ -14,20 +14,47 @@ public partial class FinderViewModel : ObservableObject
     private readonly ITrayMirrorFacade _trayMirror;
     private readonly WeatherService _weather;
 
-    [ObservableProperty] private double _cpuUsage;
-    [ObservableProperty] private double _memoryUsage;
-    [ObservableProperty] private double _gpuUsage;
-    [ObservableProperty] private double _diskUsage;
-    [ObservableProperty] private double _networkUpKbps;
-    [ObservableProperty] private int _batteryPercent = 100;
-    [ObservableProperty] private string _batteryTimeRemaining = string.Empty;
-    [ObservableProperty] private string _clockText = DateTime.Now.ToString("h:mm tt");
-    [ObservableProperty] private string _dateText = DateTime.Now.ToString("ddd MMM d");
-    [ObservableProperty] private string _weatherText = "—";
-    [ObservableProperty] private string _keyboardLayout = "EN";
-    [ObservableProperty] private IReadOnlyList<TrayProxyItem> _trayIcons = [];
-    [ObservableProperty] private bool _isDark;
-    [ObservableProperty] private double _barHeight = 28;
+    [ObservableProperty]
+    public partial double CpuUsage { get; set; }
+
+    [ObservableProperty]
+    public partial double MemoryUsage { get; set; }
+
+    [ObservableProperty]
+    public partial double GpuUsage { get; set; }
+
+    [ObservableProperty]
+    public partial double DiskUsage { get; set; }
+
+    [ObservableProperty]
+    public partial double NetworkUpKbps { get; set; }
+
+    [ObservableProperty]
+    public partial int BatteryPercent { get; set; } = 100;
+
+    [ObservableProperty]
+    public partial string BatteryTimeRemaining { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string ClockText { get; set; } = DateTime.Now.ToString("h:mm tt");
+
+    [ObservableProperty]
+    public partial string DateText { get; set; } = DateTime.Now.ToString("ddd MMM d");
+
+    [ObservableProperty]
+    public partial string WeatherText { get; set; } = "—";
+
+    [ObservableProperty]
+    public partial string KeyboardLayout { get; set; } = "EN";
+
+    [ObservableProperty]
+    public partial IReadOnlyList<TrayProxyItem> TrayIcons { get; set; } = [];
+
+    [ObservableProperty]
+    public partial bool IsDark { get; set; }
+
+    [ObservableProperty]
+    public partial double BarHeight { get; set; } = 28;
 
     public bool ShowCpu => _settings.Current.ShowCpu;
     public bool ShowGpu => _settings.Current.ShowGpu;
@@ -120,7 +147,7 @@ public partial class FinderViewModel : ObservableObject
 
 public sealed class TrayProxyItem
 {
-    public required string Tooltip { get; init; }
+    public string Tooltip { get; init; } = string.Empty;
     public nint OwnerWindow { get; init; }
     public uint IconId { get; init; }
     public byte[]? IconData { get; init; }

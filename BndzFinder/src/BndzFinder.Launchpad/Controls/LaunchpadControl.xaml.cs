@@ -23,6 +23,11 @@ public sealed partial class LaunchpadControl : UserControl
         {
             if (ViewModel is not null) ViewModel.SearchQuery = SearchBox.Text;
         };
+        AppGrid.ItemClick += (_, e) =>
+        {
+            if (ViewModel is not null && e.ClickedItem is AppCatalogEntry entry)
+                ViewModel.LaunchCommand.Execute(entry);
+        };
     }
 
     private void Bind()

@@ -110,13 +110,13 @@ public sealed partial class PreferencesShellControl : UserControl
         ViewModel.SetWidgetEnabled("keyboard", WidgetKeyboard.IsOn);
         ViewModel.SetWidgetEnabled("media", WidgetMedia.IsOn);
         ViewModel.SetWidgetEnabled("notifications", WidgetNotifications.IsOn);
-        await ViewModel.SaveAsync();
+        await ViewModel.SaveCommand.ExecuteAsync(null);
     }
 
     private async void OnBackup(object sender, RoutedEventArgs e)
     {
         if (ViewModel is null) return;
-        await ViewModel.BackupAsync();
+        await ViewModel.BackupCommand.ExecuteAsync(null);
     }
 
     private static string FormatHotkey(HotkeyBinding binding)

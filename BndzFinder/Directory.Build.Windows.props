@@ -14,9 +14,12 @@
     <_AppxToolsV17>$(_WinSdkBuildToolsRoot)tools\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\</_AppxToolsV17>
     <AppxPackageToolsPath Condition="Exists('$(_AppxToolsV18)')">$(_AppxToolsV18)</AppxPackageToolsPath>
     <AppxPackageToolsPath Condition="'$(AppxPackageToolsPath)' == '' AND Exists('$(_AppxToolsV17)')">$(_AppxToolsV17)</AppxPackageToolsPath>
+    <!-- Class libraries must not run PRI packaging; merged at BndzFinder.App (WinExe). -->
+    <MrtCoreEnablePriGeneration Condition="'$(OutputType)' != 'WinExe'">false</MrtCoreEnablePriGeneration>
+    <GenerateLibraryLayout Condition="'$(OutputType)' != 'WinExe'">false</GenerateLibraryLayout>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
   </ItemGroup>
 </Project>

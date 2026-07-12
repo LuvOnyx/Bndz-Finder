@@ -78,7 +78,7 @@ public sealed partial class FolderStackFlyout : UserControl
                 BorderThickness = new Thickness(0),
                 Padding = new Thickness(4)
             };
-            btn.Click += (_, _) => _ = ViewModel.OpenEntryAsync(entry);
+            btn.Click += (_, _) => _ = ViewModel.OpenEntryCommand.ExecuteAsync(entry);
             Canvas.SetLeft(btn, x);
             Canvas.SetTop(btn, y);
             FanCanvas.Children.Add(btn);

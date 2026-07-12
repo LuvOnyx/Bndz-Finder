@@ -143,16 +143,19 @@ WinUI pulls large packages (`Microsoft.WindowsAppSDK`, `Microsoft.Windows.SDK.Bu
 
 ### Flaky WiFi / provider outages
 
-`build.ps1` and `run.cmd` now:
+`build.ps1` and `run.cmd`:
 
 1. **Wait** for NuGet to come back if you start offline (up to 30 minutes)
 2. **Auto-retry** restore up to **15 times** on transient errors (`NU1301`, DNS blips, timeouts)
-3. **Resume** from `%USERPROFILE%\.nuget\packages` — packages already downloaded are **not** re-fetched
+3. **Fail fast** on compile/MSBuild errors — build and test do not retry
+4. **Resume** from `%USERPROFILE%\.nuget\packages` — packages already downloaded are **not** re-fetched
 
 You do **not** need to restart manually after a split-second dropout. Leave `.\run.cmd` running; it will pause and retry.
 
 ```powershell
 .\run.cmd
+# Validate MSBuild wiring first (optional)
+pwsh -ExecutionPolicy Bypass -File .\BndzFinder\scripts\preflight.ps1
 # Optional: more retries on very bad connections
 pwsh -ExecutionPolicy Bypass -File .\BndzFinder\scripts\build.ps1 -NetworkRetries 25
 ```
@@ -180,7 +183,10 @@ dotnet nuget locals all --clear
 | `NU1101` Unable to find package | Bad package ID or wrong NuGet feed — **not WiFi**. This repo uses `nuget.org` only via `BndzFinder/nuget.config` |
 | `NU1301` / `No such host is known` (nuget.org) | **Network dropped or DNS issue.** Build auto-retries; reconnect WiFi and leave `.\run.cmd` running |
 | `MSB3073` XamlCompiler exited with code 1 | Invalid XAML — e.g. `UniformGrid` (not in WinUI 3), wrong `AcrylicBrush` placement. Fixed in latest branch |
-| `MSB4062` ExpandPriContent / Pri.Tasks.dll | `Directory.Build.Windows.props` routes Appx tools from `Microsoft.Windows.SDK.BuildTools` (v17/v18) |
-| `MVVMTK0045` | WinUI ViewModels must use `[ObservableProperty] public partial T Prop { get; set; }` — fixed across all WinUI VMs |
+| `MSB4062` ExpandPriContent / Pri.Tasks.dll | WinUI **class libraries** must set `MrtCoreEnablePriGeneration=false` (see `Directory.Build.Windows.props` + `Directory.Build.targets`). Appx tools path is routed via `Microsoft.Windows.SDK.BuildTools` for the `WinExe` app only. |
+| `CS9035` Required member not set | Remove `required` from types WinUI XAML activates (`DockIconViewModel`, etc.) — XAML codegen uses parameterless construction. |
+| `MVVMTK0045` | WinUI ViewModels use `[ObservableProperty] public partial T Prop { get; set; }` (not private fields). |
+| `NU1504` duplicate packages | Central versions in `Directory.Packages.props`; `CommunityToolkit.Mvvm` only in `Directory.Build.Windows.props`. |
+| Build retries on compile errors | `build.ps1` retries **restore only**. `CS9035` used to false-match `503` — fixed. Run `scripts\preflight.ps1` before building. |
 | WinUI build fails | Install Windows App SDK / VS Build Tools with C++ workload |
 | No dock visible | Ensure ShellHost is running; check single-instance lock in `%TEMP%` |

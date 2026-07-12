@@ -55,24 +55,31 @@ function Test-TransientNetworkError {
     $patterns = @(
         'NU1301',
         'NU1302',
+        'NU3037',
+        'NU3021',
         'No such host is known',
         'Unable to load the service index',
         'Connection refused',
-        'timed out',
-        'timeout',
         'A connection attempt failed',
         'The SSL connection could not be established',
-        '503',
-        '502',
-        '504',
         'host is down',
         'network is unreachable'
     )
 
     foreach ($pattern in $patterns) {
-        if ($Output -like "*$pattern*") {
+        if ($Output -match [regex]::Escape($pattern)) {
             return $true
         }
+    }
+
+    # Require whole-word timeout matches — avoids false positives from CS9035 containing "503".
+    if ($Output -match '(?i)\b(timed out|timeout)\b') {
+        return $true
+    }
+
+    # HTTP gateway errors as standalone status codes, not substrings of error codes.
+    if ($Output -match '(?i)\bHTTP (502|503|504)\b') {
+        return $true
     }
 
     return $false
@@ -108,12 +115,22 @@ function Wait-ForNuGetConnectivity {
 
 function Invoke-DotNet {
     param(
+        [string]$Label,
         [Parameter(Mandatory = $true, ValueFromRemainingArguments = $true)]
         [string[]]$Arguments
     )
 
+    if ($Label) {
+        Write-Host "==> $Label..." -ForegroundColor Cyan
+    }
+
     & dotnet @Arguments
     if ($LASTEXITCODE -ne 0) {
+        if ($Label -and $Label -notlike 'Restoring*') {
+            Write-Host ""
+            Write-Host "Build failed with a compile or MSBuild error (not a network issue)." -ForegroundColor Red
+            Write-Host "Fix the errors above and re-run — retries will not help compile failures." -ForegroundColor Yellow
+        }
         exit $LASTEXITCODE
     }
 }
@@ -152,6 +169,11 @@ function Invoke-DotNetWithRetry {
 
         $text = ($captured -join [Environment]::NewLine)
         if ($attempt -ge $MaxAttempts -or -not (Test-TransientNetworkError $text)) {
+            if ($Label -notlike 'Restoring*') {
+                Write-Host ""
+                Write-Host "Build failed with a compile or MSBuild error (not a network issue)." -ForegroundColor Red
+                Write-Host "Fix the errors above and re-run — retries will not help compile failures." -ForegroundColor Yellow
+            }
             exit $LASTEXITCODE
         }
 
@@ -207,17 +229,17 @@ Write-Host ""
 
 Invoke-DotNetWithRetry -Label 'Restoring BndzFinder.sln' -MaxAttempts $NetworkRetries -InitialDelaySeconds 8 restore $Sln
 
-Invoke-DotNetWithRetry -Label "Building full solution ($Configuration)" -MaxAttempts 3 -InitialDelaySeconds 5 build $Sln -c $Configuration --no-restore
+Invoke-DotNet -Label "Building full solution ($Configuration)" build $Sln -c $Configuration --no-restore
 
 if (-not $SkipTests) {
-    Invoke-DotNet test $Sln -c $Configuration --no-build
+    Invoke-DotNet -Label "Running tests ($Configuration)" test $Sln -c $Configuration --no-build
 }
 
 if ($Publish) {
     $AppOut = Join-Path $Root "src\BndzFinder.App\bin\Publish\Portable\win-x64"
     $HostOut = Join-Path $Root "src\BndzFinder.ShellHost\bin\Publish\Portable\win-x64"
 
-    Invoke-DotNetWithRetry -Label "Publishing BndzFinder.App to $AppOut" -MaxAttempts 5 -InitialDelaySeconds 10 `
+    Invoke-DotNet -Label "Publishing BndzFinder.App to $AppOut" `
         publish (Join-Path $Root "src\BndzFinder.App\BndzFinder.App.csproj") `
         -c $Configuration `
         -r win-x64 `
@@ -227,7 +249,7 @@ if ($Publish) {
         -p:WindowsAppSDKSelfContained=true `
         -o $AppOut
 
-    Invoke-DotNetWithRetry -Label "Publishing BndzFinder.ShellHost to $HostOut" -MaxAttempts 5 -InitialDelaySeconds 10 `
+    Invoke-DotNet -Label "Publishing BndzFinder.ShellHost to $HostOut" `
         publish (Join-Path $Root "src\BndzFinder.ShellHost\BndzFinder.ShellHost.csproj") `
         -c $Configuration `
         -r win-x64 `
