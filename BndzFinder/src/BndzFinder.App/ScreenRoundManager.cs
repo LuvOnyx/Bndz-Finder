@@ -2,6 +2,7 @@ using BndzFinder.Core.Services;
 using Windows.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
 using Windows.Graphics;
@@ -95,7 +96,7 @@ internal sealed class ScreenRoundCornerWindow : Window
             RadiusY = radius
         });
 
-        root.Children.Add(new Path
+        root.Children.Add(new Microsoft.UI.Xaml.Shapes.Path
         {
             Fill = new SolidColorBrush(fill),
             Data = geometry

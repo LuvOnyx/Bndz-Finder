@@ -17,6 +17,7 @@ using BndzFinder.StageManager.ViewModels;
 using BndzFinder.Shell.Assets;
 using BndzFinder.Shell.Services;
 using BndzFinder.Theming;
+using BndzFinder.Theming.Customization;
 using BndzFinder.Theming.Glass;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
