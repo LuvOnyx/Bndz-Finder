@@ -100,23 +100,37 @@ public sealed class ShellHostProcessLauncher : IShellHostProcessLauncher
     {
         if (_process is { HasExited: false }) return Task.CompletedTask;
 
-        var hostDll = Path.Combine(AppContext.BaseDirectory, "BndzFinder.ShellHost.dll");
-        if (!File.Exists(hostDll))
+        var candidates = new[]
         {
-            hostDll = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..",
-                "BndzFinder.ShellHost", "bin", "Release", "net9.0", "BndzFinder.ShellHost.dll"));
+            Path.Combine(AppContext.BaseDirectory, "BndzFinder.ShellHost.exe"),
+            Path.Combine(AppContext.BaseDirectory, "BndzFinder.ShellHost.dll"),
+            Path.Combine(AppContext.BaseDirectory, "..", "BndzFinder.ShellHost", "BndzFinder.ShellHost.exe"),
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..",
+                "BndzFinder.ShellHost", "bin", "Release", "net9.0", "BndzFinder.ShellHost.dll")),
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..",
+                "BndzFinder.ShellHost", "bin", "Publish", "Portable", "win-x64", "BndzFinder.ShellHost.exe"))
+        };
+
+        foreach (var path in candidates)
+        {
+            if (!File.Exists(path)) continue;
+            _process = path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
+                ? System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "dotnet",
+                    Arguments = $"\"{path}\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                })
+                : System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = path,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+            break;
         }
 
-        if (File.Exists(hostDll))
-        {
-            _process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = "dotnet",
-                Arguments = $"\"{hostDll}\"",
-                UseShellExecute = false,
-                CreateNoWindow = true
-            });
-        }
         return Task.CompletedTask;
     }
 }

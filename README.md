@@ -27,17 +27,30 @@ bash BndzFinder/scripts/dev.sh
 
 ### Full Windows build (WinUI 3 + dock UI)
 
+**There is no `dist/` folder** — output is under `bin/` or `bin/Publish/Portable/`.
+
+Pick the command that matches your folder layout (see [WINDOWS_DEV.md](BndzFinder/docs/WINDOWS_DEV.md)):
+
 ```powershell
-pwsh -File BndzFinder/scripts/build.ps1
-pwsh -File BndzFinder/scripts/build.ps1 -Publish   # portable self-contained exe
+# Layout A: repo root (README.md + BndzFinder/ subfolder)
+pwsh -File .\build.ps1
+pwsh -File .\build.ps1 -Publish
+pwsh -File .\run.ps1
+
+# Layout B: inner BndzFinder folder (BndzFinder.sln is here)
+pwsh -File .\scripts\build.ps1
+pwsh -File .\scripts\build.ps1 -Publish
 ```
 
 ### Run on Windows
 
 ```powershell
-# ShellHost must run for minimize-to-dock
-dotnet run --project BndzFinder/src/BndzFinder.ShellHost/BndzFinder.ShellHost.csproj
-dotnet run --project BndzFinder/src/BndzFinder.App/BndzFinder.App.csproj
+# One command (from repo root)
+pwsh -File .\run.ps1
+
+# Or two terminals (from folder with BndzFinder.sln)
+dotnet run --project src\BndzFinder.ShellHost\BndzFinder.ShellHost.csproj -c Release
+dotnet run --project src\BndzFinder.App\BndzFinder.App.csproj -c Release
 ```
 
 ## Premium Dock Features (this release)
