@@ -35,7 +35,15 @@ public partial class App : Application
     private StageManagerWindow? _stageWindow;
     private PreferencesWindow? _prefsWindow;
 
-    public App() => InitializeComponent();
+    public App()
+    {
+        InitializeComponent();
+        UnhandledException += (_, e) =>
+        {
+            e.Handled = true;
+            StartupErrorReporter.Report(e.Exception, "WinUI");
+        };
+    }
 
     public static IServiceProvider Services =>
         ((App)Current)._host?.Services
@@ -50,13 +58,21 @@ public partial class App : Application
                 .Build();
 
             var settings = Services.GetRequiredService<ISettingsService>();
-            Loc.Language = settings.Current.Language;
-
-            var orchestrator = Services.GetRequiredService<IShellOrchestrator>();
-            await orchestrator.StartAsync();
-
             var overlays = Services.GetRequiredService<IShellOverlayController>();
             var dockVm = Services.GetRequiredService<DockViewModel>();
+
+            // Show the dock BEFORE any await — WinUI exits if no window exists during async startup.
+            _dockWindow = new DockWindow();
+            _dockWindow.Activate();
+            _dockWindow.InitializePlacement();
+            _dockWindow.ApplyVisibility(true);
+
+            var orchestrator = Services.GetRequiredService<IShellOrchestrator>();
+            await orchestrator.StartAsync().ConfigureAwait(true);
+
+            Loc.Language = settings.Current.Language;
+            dockVm.RefreshAll();
+
             var finderVm = Services.GetRequiredService<FinderViewModel>();
             var launchpadVm = Services.GetRequiredService<LaunchpadViewModel>();
             var stageVm = Services.GetRequiredService<StageManagerViewModel>();
@@ -80,9 +96,13 @@ public partial class App : Application
                 _ = bridge.NotifySettingsReloadAsync();
             };
 
-            _dockWindow = new DockWindow();
-            _dockWindow.Activate();
             _dockWindow.ApplyVisibility(overlays.IsDockVisible && dockVm.IsVisible);
+
+            StartupErrorReporter.ReportMessage(
+                $"Dock visible={overlays.IsDockVisible && dockVm.IsVisible}, " +
+                $"displayMode={settings.Current.DockDisplayMode}, " +
+                $"dockPosition={settings.Current.DockPosition}",
+                "startup");
 
             if (settings.Current.FinderEnabled)
             {
@@ -102,6 +122,8 @@ public partial class App : Application
             var taskbar = Services.GetRequiredService<ITaskbarController>();
             if (settings.Current.HideTaskbarWhenDockShown)
                 taskbar.SetAutoHide(true);
+
+            StartupErrorReporter.ReportMessage("Bndz-Finder started successfully.", "startup");
         }
         catch (Exception ex)
         {
@@ -197,15 +219,20 @@ public sealed class DockWindow : ShellOverlayWindow
         Content = new DockBarControl { ViewModel = _dockVm };
         ConfigureChrome();
         ApplyBackdrop(_dockVm.Appearance?.Glass);
+        ResizeToDockMetrics();
         Activated += OnActivated;
         _dockVm.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName is nameof(DockViewModel.DockBarHeight)
+                or nameof(DockViewModel.DockBarWidth)
                 or nameof(DockViewModel.Appearance)
                 or nameof(DockViewModel.IsVisible))
             {
                 if (args.PropertyName is nameof(DockViewModel.Appearance))
                     ApplyBackdrop(_dockVm.Appearance?.Glass);
+                if (args.PropertyName is nameof(DockViewModel.DockBarHeight)
+                    or nameof(DockViewModel.DockBarWidth))
+                    ResizeToDockMetrics();
                 if (_appBarRegistered)
                     PositionOnAppBar();
                 ApplyVisibility(_dockVm.IsVisible);
@@ -213,6 +240,20 @@ public sealed class DockWindow : ShellOverlayWindow
         };
         _edgeTimer.Tick += (_, _) => UpdateEdgeActivation(_dockVm);
         _edgeTimer.Start();
+    }
+
+    public void InitializePlacement()
+    {
+        _appBarRegistered = true;
+        PositionOnAppBar();
+        ApplyVisibility(true);
+    }
+
+    private void ResizeToDockMetrics()
+    {
+        var width = (int)Math.Clamp(_dockVm.DockBarWidth, 400, 3840);
+        var height = (int)Math.Clamp(_dockVm.DockBarHeight + 32, 72, 240);
+        AppWindow.Resize(new SizeInt32(width, height));
     }
 
     private void UpdateEdgeActivation(DockViewModel dockVm)
@@ -370,29 +411,4 @@ public sealed class PreferencesWindow : Window
         }
         SystemBackdrop = new MicaBackdrop();
     }
-}
-
-internal static class StartupErrorReporter
-{
-    public static void Report(Exception ex)
-    {
-        var logDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "BndzFinder");
-        Directory.CreateDirectory(logDir);
-        var logPath = Path.Combine(logDir, "startup.log");
-        File.WriteAllText(logPath, $"[{DateTime.Now:O}]{Environment.NewLine}{ex}{Environment.NewLine}");
-
-        if (OperatingSystem.IsWindows())
-        {
-            _ = MessageBox(
-                nint.Zero,
-                $"{ex.Message}{Environment.NewLine}{Environment.NewLine}Details: {logPath}",
-                "Bndz-Finder could not start",
-                0x10); // MB_ICONERROR
-        }
-    }
-
-    [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
-    private static extern int MessageBox(nint hWnd, string text, string caption, uint type);
 }

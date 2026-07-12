@@ -95,16 +95,12 @@ Start-Sleep -Seconds 3
 
 Write-Host "Starting Bndz-Finder App (dock UI)..." -ForegroundColor Cyan
 Write-Host "  $AppExe" -ForegroundColor DarkGray
+Write-Host "Look for the dock along the bottom edge of your screen." -ForegroundColor Green
 Write-Host "Close both terminal windows to exit." -ForegroundColor Yellow
 Write-Host "If nothing appears, check %LOCALAPPDATA%\BndzFinder\startup.log" -ForegroundColor DarkGray
-Push-Location (Split-Path -Parent $AppExe)
-try {
-    & $AppExe
-    $appExit = $LASTEXITCODE
-}
-finally {
-    Pop-Location
-}
+$appProc = Start-Process -FilePath $AppExe -WorkingDirectory (Split-Path -Parent $AppExe) -PassThru
+Wait-Process -Id $appProc.Id
+$appExit = $appProc.ExitCode
 
 if ($appExit -ne 0) {
     Write-Host ""
