@@ -16,6 +16,7 @@ using BndzFinder.StageManager.ViewModels;
 using BndzFinder.Theming.Customization;
 using BndzFinder.Theming.Glass;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using WinRT.Interop;
