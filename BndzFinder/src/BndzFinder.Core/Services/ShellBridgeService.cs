@@ -155,6 +155,7 @@ public interface IShellOverlayController
     void ToggleDock();
     void ToggleFinder();
     void SetDockVisible(bool visible);
+    void SetFinderVisible(bool visible);
     void ShowLaunchpad();
     void HideLaunchpad();
     void ToggleStageManager();
@@ -194,6 +195,14 @@ public sealed class ShellOverlayController : IShellOverlayController
         if (_dockVisible == visible) return;
         _dockVisible = visible;
         DockVisibilityChanged?.Invoke();
+    }
+
+    public void SetFinderVisible(bool visible)
+    {
+        if (!_settings.Current.FinderEnabled) return;
+        if (_finderVisible == visible) return;
+        _finderVisible = visible;
+        FinderVisibilityChanged?.Invoke();
     }
 
     public void ToggleFinder()

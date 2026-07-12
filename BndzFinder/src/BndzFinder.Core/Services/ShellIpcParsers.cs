@@ -37,6 +37,7 @@ public sealed class TrayIconSnapshot
     public string Tooltip { get; init; } = string.Empty;
     public uint IconId { get; init; }
     public long OwnerWindow { get; init; }
+    public string? IconDataBase64 { get; init; }
 }
 
 public sealed class WindowSnapshot

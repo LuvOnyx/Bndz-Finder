@@ -30,6 +30,21 @@ public class TaskbarLifecycleTests
     }
 
     [Fact]
+    public void ReplacementMode_KeepsTaskbarHiddenWhenDockHides()
+    {
+        var controller = new RecordingTaskbarController();
+        var lifecycle = new TaskbarLifecycleService(controller, () => true, () => false);
+        lifecycle.EnableReplacementMode();
+
+        lifecycle.SyncWithDock(true);
+        var hideCount = controller.HideCount;
+        lifecycle.SyncWithDock(false);
+
+        Assert.Equal(0, controller.ShowCount);
+        Assert.True(controller.HideCount >= hideCount);
+    }
+
+    [Fact]
     public void SyncWithDock_SkipsWhenSettingDisabled()
     {
         var controller = new RecordingTaskbarController();
@@ -42,21 +57,23 @@ public class TaskbarLifecycleTests
 
     private sealed class RecordingTaskbarController : ITaskbarController
     {
-        public bool HideCalled { get; private set; }
-        public bool ShowCalled { get; private set; }
+        public int HideCount { get; private set; }
+        public int ShowCount { get; private set; }
+        public bool HideCalled => HideCount > 0;
+        public bool ShowCalled => ShowCount > 0;
         public bool LastAllMonitors { get; private set; }
 
         public void SetAutoHide(bool enabled) { }
 
         public void Hide(bool allMonitors = false)
         {
-            HideCalled = true;
+            HideCount++;
             LastAllMonitors = allMonitors;
         }
 
         public void Show(bool allMonitors = false)
         {
-            ShowCalled = true;
+            ShowCount++;
             LastAllMonitors = allMonitors;
         }
     }

@@ -146,7 +146,8 @@ internal sealed class ShellHostWorker : BackgroundService
         {
             i.Tooltip,
             i.IconId,
-            OwnerWindow = i.OwnerWindow.ToInt64()
+            OwnerWindow = i.OwnerWindow.ToInt64(),
+            IconDataBase64 = i.IconData is { Length: > 0 } data ? Convert.ToBase64String(data) : null
         }));
         await _server.BroadcastAsync(new ShellHostMessage
         {

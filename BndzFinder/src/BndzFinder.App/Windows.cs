@@ -14,10 +14,12 @@ using BndzFinder.Preferences.Localization;
 using BndzFinder.Preferences.ViewModels;
 using BndzFinder.StageManager.Controls;
 using BndzFinder.StageManager.ViewModels;
-using BndzFinder.Theming.Customization;
+using BndzFinder.Shell.Assets;
+using BndzFinder.Shell.Services;
 using BndzFinder.Theming.Glass;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
@@ -53,6 +55,10 @@ public partial class App : Application
     {
         try
         {
+            // WinUI 3 has no Application.OnExit — restore taskbar on dispatcher shutdown.
+            DispatcherQueue.GetForCurrentThread().ShutdownCompleted += (_, _) =>
+                _host?.Services.GetService<ITaskbarLifecycleService>()?.Restore();
+
             _host = Host.CreateDefaultBuilder()
                 .ConfigureServices(ConfigureServices)
                 .Build();
@@ -61,12 +67,17 @@ public partial class App : Application
             var overlays = Services.GetRequiredService<IShellOverlayController>();
             var dockVm = Services.GetRequiredService<DockViewModel>();
 
+            Services.GetRequiredService<IMacBrandingBootstrap>().EnsureBrandingAssets();
+
+            var taskbarLifecycle = Services.GetRequiredService<ITaskbarLifecycleService>();
+            taskbarLifecycle.EnableReplacementMode();
+
             // Show the dock BEFORE any await — WinUI exits if no window exists during async startup.
             _dockWindow = new DockWindow();
             _dockWindow.Activate();
             _dockWindow.InitializePlacement();
             _dockWindow.ApplyVisibility(true);
-            Services.GetRequiredService<ITaskbarLifecycleService>().SyncWithDock(true);
+            taskbarLifecycle.SyncWithDock(true);
 
             var orchestrator = Services.GetRequiredService<IShellOrchestrator>();
             await orchestrator.StartAsync().ConfigureAwait(true);
@@ -124,7 +135,9 @@ public partial class App : Application
             if (settings.Current.FinderEnabled)
             {
                 _finderWindow = new FinderWindow();
-                _finderWindow.ApplyVisibility(false);
+                _finderWindow.InitializePlacement();
+                overlays.SetFinderVisible(true);
+                _finderWindow.ApplyVisibility(true);
             }
 
             _launchpadWindow = new LaunchpadWindow();
@@ -143,12 +156,6 @@ public partial class App : Application
             _host?.Services.GetService<ITaskbarLifecycleService>()?.Restore();
             StartupErrorReporter.Report(ex);
         }
-    }
-
-    protected override void OnExit(object sender, Microsoft.UI.Xaml.ExitEventArgs args)
-    {
-        Services.GetService<ITaskbarLifecycleService>()?.Restore();
-        base.OnExit(sender, args);
     }
 
     private void UpdateLaunchpad(bool visible)
@@ -187,7 +194,9 @@ public partial class App : Application
         services.AddSingleton<ITaskbarLifecycleService>(sp => new TaskbarLifecycleService(
             sp.GetRequiredService<ITaskbarController>(),
             () => sp.GetRequiredService<ISettingsService>().Current.HideTaskbarWhenDockShown,
-            () => sp.GetRequiredService<ISettingsService>().Current.HideTaskbarAllMonitors));
+            () => sp.GetRequiredService<ISettingsService>().Current.HideTaskbarAllMonitors,
+            () => sp.GetRequiredService<ISettingsService>().Current.AutoHideTaskbarAtStartup));
+        services.AddSingleton<IMacBrandingBootstrap, MacBrandingBootstrap>();
         services.AddSingleton<IWindowPreviewService, WindowPreviewService>();
         services.AddSingleton<IWindowCaptureService, WindowCaptureService>();
         services.AddSingleton<ISystemMetricsService, WmiSystemMetricsService>();
@@ -240,6 +249,8 @@ public sealed class DockWindow : ShellOverlayWindow
     {
         Title = "Bndz-Finder Dock";
         _dockVm = App.Services.GetRequiredService<DockViewModel>();
+        _dockVm.UiRefresh = () => Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread()
+            .TryEnqueue(_dockVm.RefreshLayout);
         Content = new DockBarControl { ViewModel = _dockVm };
         ConfigureChrome();
         ApplyBackdrop(_dockVm.Appearance?.Glass);
@@ -262,7 +273,11 @@ public sealed class DockWindow : ShellOverlayWindow
                 ApplyVisibility(_dockVm.IsVisible);
             }
         };
-        _edgeTimer.Tick += (_, _) => UpdateEdgeActivation(_dockVm);
+        _edgeTimer.Tick += (_, _) =>
+        {
+            UpdateEdgeActivation(_dockVm);
+            _dockVm.ApplyHideDelayIfDue();
+        };
         _edgeTimer.Start();
     }
 
@@ -365,6 +380,8 @@ public sealed class DockWindow : ShellOverlayWindow
 
 public sealed class FinderWindow : ShellOverlayWindow
 {
+    private bool _appBarRegistered;
+
     public FinderWindow()
     {
         Title = "Bndz-Finder Finder";
@@ -378,6 +395,34 @@ public sealed class FinderWindow : ShellOverlayWindow
         }
         AppWindow.IsShownInSwitchers = false;
         SystemBackdrop = new DesktopAcrylicBackdrop();
+        Activated += (_, args) =>
+        {
+            if (args.WindowActivationState != WindowActivationState.Deactivated)
+                PositionOnAppBar();
+        };
+    }
+
+    public void InitializePlacement()
+    {
+        _appBarRegistered = true;
+        PositionOnAppBar();
+        ApplyVisibility(true);
+    }
+
+    private void PositionOnAppBar()
+    {
+        if (!_appBarRegistered && AppWindow is null) return;
+        _appBarRegistered = true;
+        var hwnd = WindowNative.GetWindowHandle(this);
+        var appBar = App.Services.GetRequiredService<IAppBarService>();
+        var settings = App.Services.GetRequiredService<ISettingsService>();
+        var size = Math.Max(28, settings.Current.FinderHeight + settings.Current.FinderOffsetY);
+        var rect = appBar.Register(hwnd, AppBarEdge.Top, size);
+        if (rect.Right > rect.Left && rect.Bottom > rect.Top)
+        {
+            AppWindow.MoveAndResize(new RectInt32(
+                rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top));
+        }
     }
 }
 

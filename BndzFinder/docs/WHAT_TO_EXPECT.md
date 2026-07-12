@@ -1,6 +1,6 @@
 # What to expect when the build succeeds
 
-**Be honest:** This is a **foundation / scaffold**, not a finished MyDockFinder replacement.
+**Be honest:** Bndz-Finder targets **MyDockFinder parity** (see `docs/BUILD_PLAN.md`). Phase 4 visual completion is in progress — running apps, Finder bar, and real icons ship in the current sprint; minimize animations and full 296-item QA remain.
 
 ## Parity status
 
