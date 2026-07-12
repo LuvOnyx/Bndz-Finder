@@ -142,5 +142,7 @@ Start-Process $app
 | `not digitally signed` / execution policy | Use **`.\run.cmd`** or **`.\build.cmd`** instead of `.ps1`, or `pwsh -ExecutionPolicy Bypass -File .\run.ps1` |
 | `BndzFinder.sln not found` | `cd` to folder containing `BndzFinder.sln` |
 | `dotnet not found` | Install .NET 9 SDK |
+| `NU1301` / `No such host is known` (nuget.org) | **Network/DNS issue** — not a code bug. Verify `ping www.nuget.org`, disable VPN/proxy, check firewall. First WinUI restore needs internet for `Microsoft.WindowsAppSDK`. Retry: `dotnet nuget locals all --clear` then `.\build.cmd` |
+| SDK 10 with pinned .NET 9 | Install [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) alongside SDK 10, or use `global.json` rollForward |
 | WinUI build fails | Install Windows App SDK / VS Build Tools with C++ workload |
 | No dock visible | Ensure ShellHost is running; check single-instance lock in `%TEMP%` |

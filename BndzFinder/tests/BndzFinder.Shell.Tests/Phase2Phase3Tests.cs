@@ -46,6 +46,16 @@ public class HotkeyBindingServiceTests
         Assert.Single(service.GetBindings());
         Assert.Equal("test", service.GetBindings()[0].Id);
     }
+
+    [Fact]
+    public void Unregister_RemovesBinding()
+    {
+        var hotkeys = new GlobalHotkeyService();
+        var service = new HotkeyBindingService(hotkeys);
+        service.Register("test", "Win", "L", () => { });
+        service.Unregister("test");
+        Assert.Empty(service.GetBindings());
+    }
 }
 
 public class AppBarServiceTests

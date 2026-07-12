@@ -73,6 +73,7 @@ public interface IHotkeyBindingService
 public sealed class HotkeyBindingService : IHotkeyBindingService, IHotkeyBindingRegistrar
 {
     private readonly Dictionary<string, (HotkeyBinding Binding, Action Handler)> _bindings = new();
+    private readonly Dictionary<string, int> _bindingToHotkeyId = new();
     private readonly GlobalHotkeyService _hotkeys;
     private int _nextId = 1;
 
@@ -83,19 +84,22 @@ public sealed class HotkeyBindingService : IHotkeyBindingService, IHotkeyBinding
 
     public void Register(HotkeyBinding binding, Action handler)
     {
+        if (_bindingToHotkeyId.TryGetValue(binding.Id, out var existingId))
+            _hotkeys.Unregister(existingId);
+
         var id = _nextId++;
         _bindings[binding.Id] = (binding, handler);
+        _bindingToHotkeyId[binding.Id] = id;
         var modFlags = ParseModifiers(binding.Modifiers);
         var vk = ParseVirtualKey(binding.Key);
-        if (vk != 0) _hotkeys.Register(id, modFlags, vk, handler);
+        if (vk != 0)
+            _hotkeys.TryRegister(id, modFlags, vk, handler);
     }
 
     public void Unregister(string bindingId)
     {
-        if (_bindings.Remove(bindingId, out _))
-        {
-            // id mapping simplified for scaffold
-        }
+        if (_bindings.Remove(bindingId, out _) && _bindingToHotkeyId.Remove(bindingId, out var id))
+            _hotkeys.Unregister(id);
     }
 
     public IReadOnlyList<HotkeyBinding> GetBindings() =>

@@ -49,6 +49,8 @@ internal sealed class ShellHostWorker : BackgroundService
     private readonly MinimizeAnimationEngine _animator;
     private readonly IWindowCaptureService _capture;
     private readonly IMinimizeHookService _minimizeHook;
+    private readonly GlobalHotkeyService _globalHotkeys;
+    private readonly WinEventHookService _winEvents;
     private readonly IHotkeyBindingRegistrar _hotkeys;
     private readonly IHotkeySyncService _hotkeySync;
     private readonly IHotCornerMonitor _hotCorners;
@@ -62,6 +64,8 @@ internal sealed class ShellHostWorker : BackgroundService
         MinimizeAnimationEngine animator,
         IWindowCaptureService capture,
         IMinimizeHookService minimizeHook,
+        GlobalHotkeyService globalHotkeys,
+        WinEventHookService winEvents,
         IHotkeyBindingRegistrar hotkeys,
         IHotkeySyncService hotkeySync,
         IHotCornerMonitor hotCorners,
@@ -74,6 +78,8 @@ internal sealed class ShellHostWorker : BackgroundService
         _animator = animator;
         _capture = capture;
         _minimizeHook = minimizeHook;
+        _globalHotkeys = globalHotkeys;
+        _winEvents = winEvents;
         _hotkeys = hotkeys;
         _hotkeySync = hotkeySync;
         _hotCorners = hotCorners;
@@ -87,6 +93,12 @@ internal sealed class ShellHostWorker : BackgroundService
         _server.MessageReceived += OnMessageReceived;
         _ = _server.RunAsync(stoppingToken);
 
+        _globalHotkeys.EnsureStarted();
+        _winEvents.Start();
+        _winEvents.WindowCreated += (_, _) => _ = BroadcastWindowListAsync(stoppingToken);
+        _winEvents.WindowDestroyed += (_, _) => _ = BroadcastWindowListAsync(stoppingToken);
+        _winEvents.WindowMinimized += (_, _) => _ = BroadcastWindowListAsync(stoppingToken);
+
         _minimizeHook.Start(OnWindowMinimized);
         _hotkeySync.ApplyFromSettings(_settings.Current, new ShellHostHotkeyRegistrar(_hotkeys, _server, _logger));
         _hotCorners.Start((action, entered) =>
@@ -96,29 +108,41 @@ internal sealed class ShellHostWorker : BackgroundService
         });
         _keyboard.Start(vk => { _ = OnKeyboardMinimizeAsync(stoppingToken); });
 
+        await BroadcastTrayIconsAsync(stoppingToken).ConfigureAwait(false);
+        await BroadcastWindowListAsync(stoppingToken).ConfigureAwait(false);
+
         while (!stoppingToken.IsCancellationRequested)
         {
-            var icons = _trayMirror.GetVisibleTrayIcons();
-            var payload = JsonSerializer.Serialize(icons.Select(i => new { i.Tooltip, i.IconId }));
-            await _server.BroadcastAsync(new ShellHostMessage
-            {
-                Type = ShellHostMessageType.TrayIconsUpdated,
-                Payload = payload
-            }, stoppingToken).ConfigureAwait(false);
-
-            var windows = WindowEnumerationService.GetOpenWindows(_settings.Current.StageManagerBlacklist);
-            await _server.BroadcastAsync(new ShellHostMessage
-            {
-                Type = ShellHostMessageType.WindowListUpdated,
-                Payload = JsonSerializer.Serialize(windows.Select(w => new { w.Title, Handle = w.Hwnd.ToInt64() }))
-            }, stoppingToken).ConfigureAwait(false);
-
+            await BroadcastTrayIconsAsync(stoppingToken).ConfigureAwait(false);
             await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken).ConfigureAwait(false);
         }
 
         _minimizeHook.Stop();
         _hotCorners.Stop();
         _keyboard.Stop();
+        _winEvents.Dispose();
+        _globalHotkeys.Dispose();
+    }
+
+    private async Task BroadcastTrayIconsAsync(CancellationToken ct)
+    {
+        var icons = _trayMirror.GetVisibleTrayIcons();
+        var payload = JsonSerializer.Serialize(icons.Select(i => new { i.Tooltip, i.IconId }));
+        await _server.BroadcastAsync(new ShellHostMessage
+        {
+            Type = ShellHostMessageType.TrayIconsUpdated,
+            Payload = payload
+        }, ct).ConfigureAwait(false);
+    }
+
+    private async Task BroadcastWindowListAsync(CancellationToken ct)
+    {
+        var windows = WindowEnumerationService.GetOpenWindows(_settings.Current.StageManagerBlacklist);
+        await _server.BroadcastAsync(new ShellHostMessage
+        {
+            Type = ShellHostMessageType.WindowListUpdated,
+            Payload = JsonSerializer.Serialize(windows.Select(w => new { w.Title, Handle = w.Hwnd.ToInt64() }))
+        }, ct).ConfigureAwait(false);
     }
 
     private void OnMessageReceived(object? sender, ShellHostMessage message)

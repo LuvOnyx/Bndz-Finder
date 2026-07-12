@@ -23,6 +23,32 @@ $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $Sln = Join-Path $Root 'BndzFinder.sln'
 
+function Invoke-DotNet {
+    param(
+        [Parameter(Mandatory = $true, ValueFromRemainingArguments = $true)]
+        [string[]]$Arguments
+    )
+
+    & dotnet @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+}
+
+function Test-NuGetConnectivity {
+    try {
+        $resolved = [System.Net.Dns]::GetHostEntry('www.nuget.org')
+        if ($resolved.AddressList.Count -gt 0) {
+            return $true
+        }
+    }
+    catch {
+        return $false
+    }
+
+    return $false
+}
+
 if (-not (Test-Path $Sln)) {
     Write-Host "ERROR: BndzFinder.sln not found at: $Sln" -ForegroundColor Red
     Write-Host ""
@@ -35,15 +61,24 @@ if (-not (Test-Path $Sln)) {
 }
 
 Write-Host "Project root: $Root" -ForegroundColor DarkGray
+
+if (-not (Test-NuGetConnectivity)) {
+    Write-Host "WARNING: Cannot resolve www.nuget.org (DNS/network issue)." -ForegroundColor Yellow
+    Write-Host "WinUI projects require Microsoft.WindowsAppSDK from NuGet on first restore." -ForegroundColor Yellow
+    Write-Host "Fix connectivity (DNS, firewall, VPN, proxy) then re-run build." -ForegroundColor Yellow
+    Write-Host "See BndzFinder/docs/WINDOWS_DEV.md for NU1301 troubleshooting." -ForegroundColor Yellow
+    Write-Host ""
+}
+
 Write-Host "==> Restoring BndzFinder.sln..." -ForegroundColor Cyan
-dotnet restore $Sln
+Invoke-DotNet restore $Sln
 
 Write-Host "==> Building full solution ($Configuration)..." -ForegroundColor Cyan
-dotnet build $Sln -c $Configuration --no-restore
+Invoke-DotNet build $Sln -c $Configuration --no-restore
 
 if (-not $SkipTests) {
     Write-Host "==> Running tests..." -ForegroundColor Cyan
-    dotnet test $Sln -c $Configuration --no-build
+    Invoke-DotNet test $Sln -c $Configuration --no-build
 }
 
 if ($Publish) {
@@ -51,7 +86,7 @@ if ($Publish) {
     $HostOut = Join-Path $Root "src\BndzFinder.ShellHost\bin\Publish\Portable\win-x64"
 
     Write-Host "==> Publishing BndzFinder.App to $AppOut..." -ForegroundColor Cyan
-    dotnet publish (Join-Path $Root "src\BndzFinder.App\BndzFinder.App.csproj") `
+    Invoke-DotNet publish (Join-Path $Root "src\BndzFinder.App\BndzFinder.App.csproj") `
         -c $Configuration `
         -r win-x64 `
         --self-contained true `
@@ -61,7 +96,7 @@ if ($Publish) {
         -o $AppOut
 
     Write-Host "==> Publishing BndzFinder.ShellHost to $HostOut..." -ForegroundColor Cyan
-    dotnet publish (Join-Path $Root "src\BndzFinder.ShellHost\BndzFinder.ShellHost.csproj") `
+    Invoke-DotNet publish (Join-Path $Root "src\BndzFinder.ShellHost\BndzFinder.ShellHost.csproj") `
         -c $Configuration `
         -r win-x64 `
         --self-contained true `
