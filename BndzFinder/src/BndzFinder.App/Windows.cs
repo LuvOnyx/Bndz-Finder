@@ -66,6 +66,7 @@ public partial class App : Application
             _dockWindow.Activate();
             _dockWindow.InitializePlacement();
             _dockWindow.ApplyVisibility(true);
+            Services.GetRequiredService<ITaskbarLifecycleService>().SyncWithDock(true);
 
             var orchestrator = Services.GetRequiredService<IShellOrchestrator>();
             await orchestrator.StartAsync().ConfigureAwait(true);
@@ -77,7 +78,11 @@ public partial class App : Application
             var launchpadVm = Services.GetRequiredService<LaunchpadViewModel>();
             var stageVm = Services.GetRequiredService<StageManagerViewModel>();
 
-            overlays.DockVisibilityChanged += () => _dockWindow?.ApplyVisibility(overlays.IsDockVisible);
+            overlays.DockVisibilityChanged += () =>
+            {
+                _dockWindow?.ApplyVisibility(overlays.IsDockVisible);
+                SyncTaskbar();
+            };
             overlays.FinderVisibilityChanged += () => _finderWindow?.ApplyVisibility(overlays.IsFinderVisible);
             overlays.LaunchpadVisibilityChanged += () => UpdateLaunchpad(overlays.IsLaunchpadVisible);
             overlays.StageManagerVisibilityChanged += () => _stageWindow?.ApplyVisibility(overlays.IsStageManagerVisible);
@@ -93,10 +98,22 @@ public partial class App : Application
                 Loc.Language = settings.Current.Language;
                 dockVm.RefreshAll();
                 finderVm.NotifyWidgetVisibility();
+                SyncTaskbar();
                 _ = bridge.NotifySettingsReloadAsync();
             };
 
+            dockVm.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName is nameof(DockViewModel.IsVisible))
+                    SyncTaskbar();
+            };
+
+            void SyncTaskbar() =>
+                Services.GetRequiredService<ITaskbarLifecycleService>()
+                    .SyncWithDock(overlays.IsDockVisible && dockVm.IsVisible);
+
             _dockWindow.ApplyVisibility(overlays.IsDockVisible && dockVm.IsVisible);
+            SyncTaskbar();
 
             StartupErrorReporter.ReportMessage(
                 $"Dock visible={overlays.IsDockVisible && dockVm.IsVisible}, " +
@@ -119,16 +136,19 @@ public partial class App : Application
                 _stageWindow.ApplyVisibility(false);
             }
 
-            var taskbar = Services.GetRequiredService<ITaskbarController>();
-            if (settings.Current.HideTaskbarWhenDockShown)
-                taskbar.SetAutoHide(true);
-
             StartupErrorReporter.ReportMessage("Bndz-Finder started successfully.", "startup");
         }
         catch (Exception ex)
         {
+            _host?.Services.GetService<ITaskbarLifecycleService>()?.Restore();
             StartupErrorReporter.Report(ex);
         }
+    }
+
+    protected override void OnExit(object sender, Microsoft.UI.Xaml.ExitEventArgs args)
+    {
+        Services.GetService<ITaskbarLifecycleService>()?.Restore();
+        base.OnExit(sender, args);
     }
 
     private void UpdateLaunchpad(bool visible)
@@ -164,6 +184,10 @@ public partial class App : Application
         services.AddSingleton<IDockAppearanceService, DockAppearanceService>();
         services.AddSingleton<IAppBarService, AppBarService>();
         services.AddSingleton<ITaskbarController, TaskbarController>();
+        services.AddSingleton<ITaskbarLifecycleService>(sp => new TaskbarLifecycleService(
+            sp.GetRequiredService<ITaskbarController>(),
+            () => sp.GetRequiredService<ISettingsService>().Current.HideTaskbarWhenDockShown,
+            () => sp.GetRequiredService<ISettingsService>().Current.HideTaskbarAllMonitors));
         services.AddSingleton<IWindowPreviewService, WindowPreviewService>();
         services.AddSingleton<IWindowCaptureService, WindowCaptureService>();
         services.AddSingleton<ISystemMetricsService, WmiSystemMetricsService>();
@@ -251,9 +275,11 @@ public sealed class DockWindow : ShellOverlayWindow
 
     private void ResizeToDockMetrics()
     {
-        var width = (int)Math.Clamp(_dockVm.DockBarWidth, 400, 3840);
+        // Window spans full monitor width via AppBar; only pre-size height before registration.
         var height = (int)Math.Clamp(_dockVm.DockBarHeight + 32, 72, 240);
-        AppWindow.Resize(new SizeInt32(width, height));
+        if (_appBarRegistered)
+            return;
+        AppWindow.Resize(new SizeInt32(800, height));
     }
 
     private void UpdateEdgeActivation(DockViewModel dockVm)

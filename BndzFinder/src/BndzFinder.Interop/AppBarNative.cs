@@ -106,43 +106,89 @@ public sealed class AppBarService : IAppBarService
 public interface ITaskbarController
 {
     void SetAutoHide(bool enabled);
-    void Show();
-    void Hide();
+    void Hide(bool allMonitors = false);
+    void Show(bool allMonitors = false);
 }
 
 public sealed class TaskbarController : ITaskbarController
 {
-    private const string TaskbarClass = "Shell_TrayWnd";
+    private const string PrimaryTaskbarClass = "Shell_TrayWnd";
+    private const string SecondaryTaskbarClass = "Shell_SecondaryTrayWnd";
+    private const int SwHide = 0;
+    private const int SwShow = 5;
 
     public void SetAutoHide(bool enabled)
     {
         if (!OperatingSystem.IsWindows()) return;
-        var hwnd = FindWindow(TaskbarClass, null);
-        if (hwnd == nint.Zero) return;
-
-        var bar = new APPBARDATA
+        foreach (var hwnd in EnumerateTaskbars(allMonitors: true))
         {
-            cbSize = (uint)Marshal.SizeOf<APPBARDATA>(),
-            hWnd = hwnd,
-            lParam = enabled ? 1 : 0
-        };
-        _ = SHAppBarMessage(8, ref bar); // ABM_SETAUTOHIDEBAR
+            var bar = new APPBARDATA
+            {
+                cbSize = (uint)Marshal.SizeOf<APPBARDATA>(),
+                hWnd = hwnd,
+                lParam = enabled ? 1 : 0
+            };
+            _ = SHAppBarMessage(8, ref bar);
+        }
     }
 
-    public void Show()
+    public void Hide(bool allMonitors = false)
     {
         if (!OperatingSystem.IsWindows()) return;
-        var hwnd = FindWindow(TaskbarClass, null);
-        if (hwnd != nint.Zero) _ = ShowWindow(hwnd, 5); // SW_SHOW
+        SetAutoHide(false);
+        foreach (var hwnd in EnumerateTaskbars(allMonitors))
+            _ = ShowWindow(hwnd, SwHide);
     }
 
-    public void Hide() => SetAutoHide(true);
+    public void Show(bool allMonitors = false)
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        foreach (var hwnd in EnumerateTaskbars(allMonitors))
+            _ = ShowWindow(hwnd, SwShow);
+        SetAutoHide(false);
+    }
+
+    private static IEnumerable<nint> EnumerateTaskbars(bool allMonitors)
+    {
+        var handles = new List<nint>();
+        var primary = FindWindow(PrimaryTaskbarClass, null);
+        if (primary != nint.Zero)
+            handles.Add(primary);
+
+        if (allMonitors)
+        {
+            EnumWindows((hwnd, _) =>
+            {
+                var cls = GetClassName(hwnd);
+                if (cls == SecondaryTaskbarClass)
+                    handles.Add(hwnd);
+                return true;
+            }, nint.Zero);
+        }
+
+        return handles;
+    }
+
+    private static string GetClassName(nint hwnd)
+    {
+        var buffer = new char[256];
+        _ = GetClassName(hwnd, buffer, buffer.Length);
+        return new string(buffer).TrimEnd('\0');
+    }
+
+    private delegate bool EnumWindowsProc(nint hwnd, nint lParam);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern nint FindWindow(string? lpClassName, string? lpWindowName);
 
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(nint hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, nint lParam);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(nint hWnd, char[] lpClassName, int nMaxCount);
 
     [DllImport("shell32.dll")]
     private static extern uint SHAppBarMessage(uint dwMessage, ref APPBARDATA pData);

@@ -7,22 +7,34 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid x:Name="DockRoot">
+    <!-- Full-width AppBar strip; centered pill matches macOS dock chrome (Apple Design Resources metrics). -->
+    <Grid x:Name="DockRoot" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+        <Border
+            x:Name="DockShadow"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            Margin="12,0,12,6"
+            Opacity="0.22"
+            CornerRadius="24"
+            Background="#50000000"
+            Translation="0,8,0" />
+
         <Border
             x:Name="GlassBackdrop"
             CornerRadius="24"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
-            Margin="12"
+            Margin="12,0,12,10"
             BorderThickness="1"
-            BorderBrush="#20FFFFFF"
+            BorderBrush="#24FFFFFF"
             Translation="0,0,16">
             <Border.Background>
                 <AcrylicBrush
                     x:Name="DockAcrylic"
-                    TintColor="#CC1E1E1E"
-                    TintOpacity="0.6"
-                    FallbackColor="#CC1E1E1E" />
+                    TintColor="#CC1A1A1A"
+                    TintOpacity="0.55"
+                    TintLuminosityOpacity="0.85"
+                    FallbackColor="#CC1A1A1A" />
             </Border.Background>
         </Border>
 

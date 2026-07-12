@@ -92,6 +92,8 @@ public sealed partial class DockBarControl : UserControl
         ApplyGlass(ViewModel.Appearance.Glass);
         GlassBackdrop.Width = ViewModel.DockBarWidth;
         GlassBackdrop.Height = ViewModel.DockBarHeight;
+        DockShadow.Width = ViewModel.DockBarWidth;
+        DockShadow.Height = ViewModel.DockBarHeight;
 
         IconCanvas.Children.Clear();
         _iconControls.Clear();

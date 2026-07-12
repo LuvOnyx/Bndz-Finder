@@ -1,6 +1,7 @@
 using BndzFinder.Animations;
 using BndzFinder.Core.Models;
 using BndzFinder.Core.Services;
+using BndzFinder.Core.Design;
 using BndzFinder.Shell.Assets;
 using BndzFinder.Shell.Badges;
 using BndzFinder.Shell.Dock;
@@ -62,11 +63,18 @@ public class CompletionPlanTests
     }
 
     [Fact]
-    public void AssetCatalog_ResolvesSystemIcons()
+    public void AssetCatalog_ResolvesSystemIconPaths()
     {
         var catalog = new AssetCatalogService();
         var path = catalog.ResolvePath("icon-finder");
-        Assert.EndsWith("finder.svg", path);
+        Assert.EndsWith("finder.png", path);
+    }
+
+    [Fact]
+    public void AppleDesignMetrics_MatchesAppIconTemplate()
+    {
+        Assert.Equal(1024, AppleDesignMetrics.IconCanvasSize);
+        Assert.Equal(824f, AppleDesignMetrics.IconContentSize);
     }
 
     [Fact]

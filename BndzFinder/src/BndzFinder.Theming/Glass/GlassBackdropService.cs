@@ -1,3 +1,5 @@
+using BndzFinder.Core.Design;
+
 namespace BndzFinder.Theming.Glass;
 
 public sealed record GlassConfiguration
@@ -72,7 +74,7 @@ public sealed class GlassBackdropService : IGlassBackdropService
                 Saturation = 1.0,
                 TintColor = tint,
                 TintOpacity = isDark ? 0.55 : 0.35,
-                CornerRadius = 24,
+                CornerRadius = AppleDesignMetrics.DockPillCornerRadius,
                 BorderOpacity = borderOpacity,
                 ShadowOpacity = 0.12
             },
@@ -85,7 +87,7 @@ public sealed class GlassBackdropService : IGlassBackdropService
                 Luminosity = isDark ? 0.88 : 0.98,
                 TintColor = tint,
                 TintOpacity = isDark ? 0.08 : 0.04,
-                CornerRadius = 24,
+                CornerRadius = AppleDesignMetrics.DockPillCornerRadius,
                 BorderOpacity = borderOpacity,
                 ShadowOpacity = 0.16,
                 ShadowBlur = 20
@@ -99,7 +101,7 @@ public sealed class GlassBackdropService : IGlassBackdropService
                 Luminosity = isDark ? 0.92 : 1.0,
                 TintColor = input.AccentColor,
                 TintOpacity = 0.03,
-                CornerRadius = 24,
+                CornerRadius = AppleDesignMetrics.DockPillCornerRadius,
                 BorderOpacity = borderOpacity * 0.8,
                 ShadowOpacity = 0.14
             },

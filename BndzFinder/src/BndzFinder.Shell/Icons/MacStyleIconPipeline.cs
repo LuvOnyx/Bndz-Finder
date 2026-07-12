@@ -1,3 +1,5 @@
+using BndzFinder.Core.Design;
+using BndzFinder.Shell.Assets;
 using SkiaSharp;
 
 namespace BndzFinder.Shell.Icons;
@@ -17,16 +19,15 @@ public sealed class IconPipelineResult
 
 public sealed class MacStyleIconPipeline : IIconPipeline
 {
-    private const int CanvasSize = 1024;
-    private const float ContentSize = 824f;
-    private const float CornerRadiusRatio = 0.2237f;
     private readonly string _cacheDirectory;
+    private readonly string? _appIconShellPath;
 
-    public MacStyleIconPipeline(string? cacheDirectory = null)
+    public MacStyleIconPipeline(string? cacheDirectory = null, string? appIconShellPath = null)
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         _cacheDirectory = cacheDirectory ?? Path.Combine(appData, "BndzFinder", "IconCache");
         Directory.CreateDirectory(_cacheDirectory);
+        _appIconShellPath = appIconShellPath ?? ResolveShellOverlayPath();
     }
 
     public string GetCachePath(string targetPath)
@@ -38,31 +39,45 @@ public sealed class MacStyleIconPipeline : IIconPipeline
 
     public async Task<IconPipelineResult> ProcessAsync(string targetPath, CancellationToken cancellationToken = default)
     {
+        if (IsImportedMacOsIcon(targetPath) && File.Exists(targetPath))
+        {
+            return new IconPipelineResult
+            {
+                CacheFilePath = targetPath,
+                Width = AppleDesignMetrics.IconCanvasSize,
+                Height = AppleDesignMetrics.IconCanvasSize
+            };
+        }
+
         var cachePath = GetCachePath(targetPath);
         if (File.Exists(cachePath))
         {
-            return new IconPipelineResult { CacheFilePath = cachePath, Width = CanvasSize, Height = CanvasSize };
+            return new IconPipelineResult
+            {
+                CacheFilePath = cachePath,
+                Width = AppleDesignMetrics.IconCanvasSize,
+                Height = AppleDesignMetrics.IconCanvasSize
+            };
         }
 
         await Task.Run(() =>
         {
-            using var surface = SKSurface.Create(new SKImageInfo(CanvasSize, CanvasSize, SKColorType.Rgba8888, SKAlphaType.Premul));
+            var canvasSize = AppleDesignMetrics.IconCanvasSize;
+            using var surface = SKSurface.Create(new SKImageInfo(canvasSize, canvasSize, SKColorType.Rgba8888, SKAlphaType.Premul));
             var canvas = surface.Canvas;
             canvas.Clear(SKColors.Transparent);
 
-            var padding = (CanvasSize - ContentSize) / 2f;
-            var contentRect = new SKRect(padding, padding, padding + ContentSize, padding + ContentSize);
-            var cornerRadius = ContentSize * CornerRadiusRatio;
+            var padding = AppleDesignMetrics.IconContentInset;
+            var contentRect = new SKRect(padding, padding, padding + AppleDesignMetrics.IconContentSize, padding + AppleDesignMetrics.IconContentSize);
+            var cornerRadius = AppleDesignMetrics.IconContentSize * AppleDesignMetrics.IconSquircleRadiusRatio;
 
-            using var clipPath = new SKPath();
-            clipPath.AddRoundRect(contentRect, cornerRadius, cornerRadius);
+            using var clipPath = AppleIconShellRenderer.CreateSquirclePath(contentRect, cornerRadius);
             canvas.Save();
             canvas.ClipPath(clipPath, SKClipOperation.Intersect, true);
-
-            DrawSourceIcon(canvas, targetPath, contentRect);
+            DrawSourceIcon(canvas, targetPath, contentRect, cornerRadius);
             canvas.Restore();
 
-            ApplyShellTemplate(canvas, contentRect, cornerRadius);
+            AppleIconShellRenderer.ApplyShell(canvas, contentRect, cornerRadius, _appIconShellPath);
 
             using var image = surface.Snapshot();
             using var data = image.Encode(SKEncodedImageFormat.Png, 100);
@@ -70,12 +85,32 @@ public sealed class MacStyleIconPipeline : IIconPipeline
             data.SaveTo(stream);
         }, cancellationToken).ConfigureAwait(false);
 
-        return new IconPipelineResult { CacheFilePath = cachePath, Width = CanvasSize, Height = CanvasSize };
+        return new IconPipelineResult
+        {
+            CacheFilePath = cachePath,
+            Width = AppleDesignMetrics.IconCanvasSize,
+            Height = AppleDesignMetrics.IconCanvasSize
+        };
     }
 
-    private static void DrawSourceIcon(SKCanvas canvas, string targetPath, SKRect rect)
+    private static bool IsImportedMacOsIcon(string targetPath)
     {
-        if (File.Exists(targetPath) && targetPath.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+        var normalized = targetPath.Replace('\\', '/');
+        return normalized.Contains("/icons/system/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? ResolveShellOverlayPath()
+    {
+        var catalog = new AssetCatalogService();
+        var path = catalog.ResolvePath("app-icon-shell");
+        return File.Exists(path) ? path : null;
+    }
+
+    private static void DrawSourceIcon(SKCanvas canvas, string targetPath, SKRect rect, float cornerRadius)
+    {
+        if (File.Exists(targetPath) &&
+            (targetPath.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+             || targetPath.EndsWith(".ico", StringComparison.OrdinalIgnoreCase)))
         {
             using var bitmap = SKBitmap.Decode(targetPath);
             if (bitmap is not null)
@@ -90,42 +125,6 @@ public sealed class MacStyleIconPipeline : IIconPipeline
             Color = new SKColor(0x2D, 0x9C, 0xDB),
             IsAntialias = true
         };
-        canvas.DrawRoundRect(rect, rect.Width * CornerRadiusRatio, rect.Height * CornerRadiusRatio, paint);
-
-        using var textPaint = new SKPaint
-        {
-            Color = SKColors.White,
-            TextSize = rect.Width * 0.35f,
-            IsAntialias = true,
-            TextAlign = SKTextAlign.Center
-        };
-        var letter = Path.GetFileNameWithoutExtension(targetPath)?.Length > 0
-            ? Path.GetFileNameWithoutExtension(targetPath)![0].ToString().ToUpperInvariant()
-            : "?";
-        canvas.DrawText(letter, rect.MidX, rect.MidY + textPaint.TextSize * 0.35f, textPaint);
-    }
-
-    private static void ApplyShellTemplate(SKCanvas canvas, SKRect rect, float cornerRadius)
-    {
-        using var gloss = new SKPaint
-        {
-            Shader = SKShader.CreateLinearGradient(
-                new SKPoint(rect.Left, rect.Top),
-                new SKPoint(rect.Left, rect.Bottom),
-                [SKColors.White.WithAlpha(60), SKColors.Transparent],
-                SKShaderTileMode.Clamp),
-            IsAntialias = true
-        };
-        canvas.DrawRoundRect(rect, cornerRadius, cornerRadius, gloss);
-
-        using var shadow = new SKPaint
-        {
-            Color = SKColors.Black.WithAlpha(40),
-            IsAntialias = true,
-            MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 12)
-        };
-        var shadowRect = rect;
-        shadowRect.Offset(0, 6);
-        canvas.DrawRoundRect(shadowRect, cornerRadius, cornerRadius, shadow);
+        canvas.DrawRoundRect(rect, cornerRadius, cornerRadius, paint);
     }
 }

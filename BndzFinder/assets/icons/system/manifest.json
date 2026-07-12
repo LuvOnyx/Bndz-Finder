@@ -1,0 +1,12 @@
+{
+  "source": "https://macosicons.com/",
+  "import": "pwsh -File BndzFinder/scripts/import-macos-icons.ps1 (requires MACOSICONS_API_KEY)",
+  "icons": [
+    { "id": "icon-finder", "file": "finder.png", "query": "Finder", "preferAppName": "Finder" },
+    { "id": "icon-launchpad", "file": "launchpad.png", "query": "Launchpad", "preferAppName": "Launchpad" },
+    { "id": "icon-calendar", "file": "calendar.png", "query": "Calendar", "preferAppName": "Calendar" },
+    { "id": "icon-trash", "file": "trash.png", "query": "Trash", "preferAppName": "Trash" },
+    { "id": "icon-weather", "file": "weather.png", "query": "Weather", "preferAppName": "Weather" },
+    { "id": "icon-preferences", "file": "preferences.png", "query": "System Settings", "preferAppName": "System Settings" }
+  ]
+}
