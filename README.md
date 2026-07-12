@@ -4,7 +4,7 @@ Premium macOS-style Windows shell overlay — MyDock, MyFinder, Launchpad, and S
 
 ## Stack
 
-- **C# 13 / .NET 9**
+- **C# 13 / .NET 10**
 - **WinUI 3** (Windows App SDK 1.6+) for all UI surfaces
 - **D3D11** (Vortice) for dock glass and minimize animations
 - **CsWin32** for shell integration (AppBar, hooks, tray mirror)
@@ -12,7 +12,7 @@ Premium macOS-style Windows shell overlay — MyDock, MyFinder, Launchpad, and S
 ## Requirements
 
 - Windows 11 x64 (primary), Windows 10 1809+ (best-effort)
-- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - Windows App SDK 1.6+ (installed with WinUI projects)
 
 ## Build

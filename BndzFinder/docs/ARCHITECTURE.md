@@ -78,7 +78,7 @@ Transport: named pipe `BndzFinder.ShellHost` with length-prefixed JSON frames.
 ## Build Requirements
 
 - **Windows 11 x64** required for full WinUI 3 build
-- **.NET 9 SDK**
+- **.NET 10 SDK**
 - Cross-platform libraries (`Core`, `Shell`, `Animations`, `Theming`, `ShellHost`) build on Linux/macOS for CI validation
 - WinUI projects require Windows App SDK 1.6+
 

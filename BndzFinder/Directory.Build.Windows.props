@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <TargetFramework>net9.0-windows10.0.22621.0</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.22621.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <Platforms>x64</Platforms>
@@ -10,10 +10,12 @@
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.756" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
   </ItemGroup>
-  <!-- WinUI packaging tasks ship in BuildTools, not in the .NET SDK alone. -->
   <PropertyGroup Condition="'$(PkgMicrosoft_Windows_SDK_BuildTools)' != ''">
-    <AppxPackageToolsPath>$(PkgMicrosoft_Windows_SDK_BuildTools)\tools\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\</AppxPackageToolsPath>
+    <_AppxToolsV18>$(PkgMicrosoft_Windows_SDK_BuildTools)\tools\MSBuild\Microsoft\VisualStudio\v18.0\AppxPackage\</_AppxToolsV18>
+    <_AppxToolsV17>$(PkgMicrosoft_Windows_SDK_BuildTools)\tools\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\</_AppxToolsV17>
+    <AppxPackageToolsPath Condition="Exists('$(_AppxToolsV18)')">$(_AppxToolsV18)</AppxPackageToolsPath>
+    <AppxPackageToolsPath Condition="'$(AppxPackageToolsPath)' == ''">$(_AppxToolsV17)</AppxPackageToolsPath>
   </PropertyGroup>
 </Project>

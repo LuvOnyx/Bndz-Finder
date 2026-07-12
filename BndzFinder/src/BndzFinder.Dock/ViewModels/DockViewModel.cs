@@ -26,38 +26,17 @@ public partial class DockViewModel : ObservableObject
     private readonly IShellOverlayController? _overlays;
     private readonly HashSet<string> _runningApps = new(StringComparer.OrdinalIgnoreCase);
 
-    [ObservableProperty]
-    public partial IReadOnlyList<PremiumDockLayoutItem> LayoutItems { get; set; } = [];
-
-    [ObservableProperty]
-    public partial IReadOnlyList<DockIconViewModel> IconViewModels { get; set; } = [];
-
-    [ObservableProperty]
-    public partial double CursorPosition { get; set; } = -9999;
-
-    [ObservableProperty]
-    public partial int? HoveredIndex { get; set; }
-
-    [ObservableProperty]
-    public partial bool IsVisible { get; set; } = true;
-
-    [ObservableProperty]
-    public partial bool MagnificationEnabled { get; set; } = true;
-
-    [ObservableProperty]
-    public partial DockAppearanceProfile? Appearance { get; set; }
-
-    [ObservableProperty]
-    public partial double DockBarHeight { get; set; } = 64;
-
-    [ObservableProperty]
-    public partial double DockBarWidth { get; set; } = 600;
-
-    [ObservableProperty]
-    public partial bool PointerNearEdge { get; set; }
-
-    [ObservableProperty]
-    public partial IReadOnlyDictionary<string, int?> BadgeCounts { get; set; } = new Dictionary<string, int?>();
+    [ObservableProperty] private IReadOnlyList<PremiumDockLayoutItem> _layoutItems = [];
+    [ObservableProperty] private IReadOnlyList<DockIconViewModel> _iconViewModels = [];
+    [ObservableProperty] private double _cursorPosition = -9999;
+    [ObservableProperty] private int? _hoveredIndex;
+    [ObservableProperty] private bool _isVisible = true;
+    [ObservableProperty] private bool _magnificationEnabled = true;
+    [ObservableProperty] private DockAppearanceProfile? _appearance;
+    [ObservableProperty] private double _dockBarHeight = 64;
+    [ObservableProperty] private double _dockBarWidth = 600;
+    [ObservableProperty] private bool _pointerNearEdge;
+    [ObservableProperty] private IReadOnlyDictionary<string, int?> _badgeCounts = new Dictionary<string, int?>();
 
     public bool PreviewEnabled => _settings.Current.PreviewOn;
 

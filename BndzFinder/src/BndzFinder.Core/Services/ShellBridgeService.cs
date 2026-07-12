@@ -106,7 +106,7 @@ public sealed class ShellHostProcessLauncher : IShellHostProcessLauncher
             Path.Combine(AppContext.BaseDirectory, "BndzFinder.ShellHost.dll"),
             Path.Combine(AppContext.BaseDirectory, "..", "BndzFinder.ShellHost", "BndzFinder.ShellHost.exe"),
             Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..",
-                "BndzFinder.ShellHost", "bin", "Release", "net9.0", "BndzFinder.ShellHost.dll")),
+                "BndzFinder.ShellHost", "bin", "Release", "net10.0", "BndzFinder.ShellHost.dll")),
             Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..",
                 "BndzFinder.ShellHost", "bin", "Publish", "Portable", "win-x64", "BndzFinder.ShellHost.exe"))
         };

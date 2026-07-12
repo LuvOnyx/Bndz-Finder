@@ -2,18 +2,18 @@
 
 ## There is no `dist/` folder
 
-This is a **.NET 9 WinUI 3** desktop app. Build output goes to:
+This is a **.NET 10 WinUI 3** desktop app. Build output goes to:
 
 | Mode | Output path |
 |------|-------------|
-| Build only | `src\BndzFinder.App\bin\Release\net9.0-windows10.0.22621.0\win-x64\BndzFinder.App.exe` |
+| Build only | `src\BndzFinder.App\bin\Release\net10.0-windows10.0.22621.0\win-x64\BndzFinder.App.exe` |
 | `-Publish` | `src\BndzFinder.App\bin\Publish\Portable\win-x64\BndzFinder.App.exe` |
 | ShellHost publish | `src\BndzFinder.ShellHost\bin\Publish\Portable\win-x64\BndzFinder.ShellHost.exe` |
 
 ## Prerequisites
 
 1. **Windows 11 x64** (recommended)
-2. **[.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)** — verify with `dotnet --version`
+2. **[.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)** — verify with `dotnet --version` (should show `10.0.x`)
 3. **PowerShell 7+** (`pwsh`) or Windows PowerShell 5.1
 
 ## Which folder am I in?
@@ -176,11 +176,11 @@ dotnet nuget locals all --clear
 | `script file is not recognized` | Wrong path — use `.\scripts\build.ps1` not `BndzFinder\scripts\...` when already inside inner folder |
 | `not digitally signed` / execution policy | Use **`.\run.cmd`** or **`.\build.cmd`** instead of `.ps1`, or `pwsh -ExecutionPolicy Bypass -File .\run.ps1` |
 | `BndzFinder.sln not found` | `cd` to folder containing `BndzFinder.sln` |
-| `dotnet not found` | Install .NET 9 SDK |
+| `dotnet not found` | Install .NET 10 SDK |
 | `NU1101` Unable to find package | Bad package ID or wrong NuGet feed — **not WiFi**. This repo uses `nuget.org` only via `BndzFinder/nuget.config` |
 | `NU1301` / `No such host is known` (nuget.org) | **Network dropped or DNS issue.** Build auto-retries; reconnect WiFi and leave `.\run.cmd` running |
 | `MSB3073` XamlCompiler exited with code 1 | Invalid XAML — e.g. `UniformGrid` (not in WinUI 3), wrong `AcrylicBrush` placement. Fixed in latest branch |
-| `MSB4062` ExpandPriContent / Pri.Tasks.dll | Project routes packaging tasks through `Microsoft.Windows.SDK.BuildTools` in `Directory.Build.Windows.props`. Also use .NET 9 SDK via `global.json` |
+| `MSB4062` ExpandPriContent / Pri.Tasks.dll | `Directory.Build.Windows.props` routes Appx tools from `Microsoft.Windows.SDK.BuildTools` (v17/v18) |
 | `MVVMTK0045` | WinUI ViewModels must use `[ObservableProperty] public partial T Prop { get; set; }` — fixed across all WinUI VMs |
 | WinUI build fails | Install Windows App SDK / VS Build Tools with C++ workload |
 | No dock visible | Ensure ShellHost is running; check single-instance lock in `%TEMP%` |

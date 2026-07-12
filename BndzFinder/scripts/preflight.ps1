@@ -15,13 +15,11 @@ $ok = $true
 
 $sdk = (dotnet --version).Trim()
 Write-Host "dotnet --version : $sdk"
-if ($sdk -match '^9\.0\.') {
-    Write-Host "  OK — .NET 9 SDK active" -ForegroundColor Green
+if ($sdk -match '^10\.0\.') {
+    Write-Host "  OK — .NET 10 SDK active" -ForegroundColor Green
 }
 else {
-    Write-Host "  FAIL — need .NET 9 SDK (global.json pins 9.0.300)" -ForegroundColor Red
-    Write-Host "  Install: https://dotnet.microsoft.com/download/dotnet/9.0" -ForegroundColor Yellow
-    $ok = $false
+    Write-Host "  WARN — repo targets .NET 10 (global.json pins 10.0.200)" -ForegroundColor Yellow
 }
 
 Write-Host ""
@@ -29,7 +27,7 @@ Write-Host "Installed SDKs:"
 dotnet --list-sdks
 
 $wasdk = Join-Path $env:USERPROFILE '.nuget\packages\microsoft.windowsappsdk\1.6.250108002'
-$buildTools = Join-Path $env:USERPROFILE '.nuget\packages\microsoft.windows.sdk.buildtools\10.0.22621.756'
+$buildTools = Join-Path $env:USERPROFILE '.nuget\packages\microsoft.windows.sdk.buildtools'
 Write-Host ""
 if (Test-Path $wasdk) { Write-Host "OK — Windows App SDK cached" -ForegroundColor Green }
 else { Write-Host "PENDING — Windows App SDK not cached (first restore downloads it)" -ForegroundColor Yellow }
@@ -43,6 +41,7 @@ try {
 }
 catch {
     Write-Host "WARN — NuGet unreachable (restore may fail)" -ForegroundColor Yellow
+    $ok = $false
 }
 
 Write-Host ""

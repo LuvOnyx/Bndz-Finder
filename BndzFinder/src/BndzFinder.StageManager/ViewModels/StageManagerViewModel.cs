@@ -9,8 +9,7 @@ public partial class StageManagerViewModel : ObservableObject
 {
     private readonly ISettingsService _settings;
 
-    [ObservableProperty]
-    public partial IReadOnlyList<WindowThumbnailItem> Windows { get; set; } = [];
+    [ObservableProperty] private IReadOnlyList<WindowThumbnailItem> _windows = [];
 
     public int ThumbnailSize => _settings.Current.StageManagerWindowSize;
     public bool ShowTitles => _settings.Current.ShowStageManagerWindowTitle;
