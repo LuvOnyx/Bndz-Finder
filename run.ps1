@@ -16,6 +16,17 @@ param(
 $ErrorActionPreference = 'Stop'
 $RepoRoot = $PSScriptRoot
 
+function Invoke-BndzScript {
+    param([string]$Path, [hashtable]$Params = @{})
+    $args = @()
+    foreach ($key in $Params.Keys) {
+        if ($Params[$key] -is [switch] -and $Params[$key]) { $args += "-$key" }
+        elseif ($Params[$key] -is [string]) { $args += "-$key"; $args += $Params[$key] }
+    }
+    & pwsh -NoProfile -ExecutionPolicy Bypass -File $Path @args
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+
 # Resolve BndzFinder project root (folder containing BndzFinder.sln)
 if (Test-Path (Join-Path $RepoRoot 'BndzFinder\BndzFinder.sln')) {
     $ProjectRoot = Join-Path $RepoRoot 'BndzFinder'
@@ -31,7 +42,7 @@ if (-not (Test-Path $BuildScript)) {
 }
 
 if ($Publish) {
-    & $BuildScript -Configuration $Configuration -Publish
+    Invoke-BndzScript $BuildScript @{ Configuration = $Configuration; Publish = $true }
     $AppExe = Join-Path $ProjectRoot 'src\BndzFinder.App\bin\Publish\Portable\win-x64\BndzFinder.App.exe'
     $HostExe = Join-Path $ProjectRoot 'src\BndzFinder.ShellHost\bin\Publish\Portable\win-x64\BndzFinder.ShellHost.exe'
     if (-not (Test-Path $HostExe)) {
@@ -49,7 +60,7 @@ if ($Publish) {
     exit 0
 }
 
-& $BuildScript -Configuration $Configuration -SkipTests
+Invoke-BndzScript $BuildScript @{ Configuration = $Configuration; SkipTests = $true }
 
 $ShellHostProj = Join-Path $ProjectRoot 'src\BndzFinder.ShellHost\BndzFinder.ShellHost.csproj'
 $AppProj = Join-Path $ProjectRoot 'src\BndzFinder.App\BndzFinder.App.csproj'
@@ -57,7 +68,7 @@ $AppProj = Join-Path $ProjectRoot 'src\BndzFinder.App\BndzFinder.App.csproj'
 Write-Host ""
 Write-Host "Starting ShellHost (minimize hooks, hotkeys, tray)..." -ForegroundColor Cyan
 $hostJob = Start-Process pwsh -ArgumentList @(
-    '-NoProfile', '-Command',
+    '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command',
     "dotnet run --project `"$ShellHostProj`" -c $Configuration"
 ) -PassThru -WindowStyle Normal
 

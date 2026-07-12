@@ -73,14 +73,27 @@ Test-Path .\BndzFinder\scripts\build.ps1
 
 Use whichever path returns `True`.
 
-## Build commands
+## Build commands (use `.cmd` — works with default Windows security policy)
 
 ```powershell
-# Standard build + tests
-pwsh -File .\scripts\build.ps1
+cd C:\Users\you\Desktop\Bndz-Finder-cursor-bndz-finder-foundation-152a
 
-# Portable self-contained exe (App + ShellHost)
-pwsh -File .\scripts\build.ps1 -Publish
+# Recommended — no execution policy issues
+.\run.cmd
+.\build.cmd
+.\publish.cmd
+
+# Or explicitly bypass policy for .ps1
+pwsh -ExecutionPolicy Bypass -File .\run.ps1
+pwsh -ExecutionPolicy Bypass -File .\build.ps1 -Publish
+```
+
+### Inner BndzFinder folder only
+
+```powershell
+.\BndzFinder\run.cmd
+.\BndzFinder\scripts\build.cmd
+.\BndzFinder\scripts\publish.cmd
 ```
 
 ## Run (development)
@@ -126,6 +139,7 @@ Start-Process $app
 | Error | Fix |
 |-------|-----|
 | `script file is not recognized` | Wrong path — use `.\scripts\build.ps1` not `BndzFinder\scripts\...` when already inside inner folder |
+| `not digitally signed` / execution policy | Use **`.\run.cmd`** or **`.\build.cmd`** instead of `.ps1`, or `pwsh -ExecutionPolicy Bypass -File .\run.ps1` |
 | `BndzFinder.sln not found` | `cd` to folder containing `BndzFinder.sln` |
 | `dotnet not found` | Install .NET 9 SDK |
 | WinUI build fails | Install Windows App SDK / VS Build Tools with C++ workload |

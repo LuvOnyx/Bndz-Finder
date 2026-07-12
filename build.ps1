@@ -37,4 +37,5 @@ if (-not $script) {
 }
 
 Write-Host "Using: $script" -ForegroundColor DarkGray
-& $script @PSBoundParameters
+& pwsh -NoProfile -ExecutionPolicy Bypass -File $script @PSBoundParameters
+exit $LASTEXITCODE

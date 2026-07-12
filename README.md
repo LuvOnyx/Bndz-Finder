@@ -32,21 +32,22 @@ bash BndzFinder/scripts/dev.sh
 Pick the command that matches your folder layout (see [WINDOWS_DEV.md](BndzFinder/docs/WINDOWS_DEV.md)):
 
 ```powershell
-# Layout A: repo root (README.md + BndzFinder/ subfolder)
-pwsh -File .\build.ps1
-pwsh -File .\build.ps1 -Publish
-pwsh -File .\run.ps1
+# Recommended (no execution policy issues)
+.\build.cmd
+.\publish.cmd
+.\run.cmd
 
-# Layout B: inner BndzFinder folder (BndzFinder.sln is here)
-pwsh -File .\scripts\build.ps1
-pwsh -File .\scripts\build.ps1 -Publish
+# Or with explicit bypass
+pwsh -ExecutionPolicy Bypass -File .\build.ps1
+pwsh -ExecutionPolicy Bypass -File .\build.ps1 -Publish
+pwsh -ExecutionPolicy Bypass -File .\run.ps1
 ```
 
 ### Run on Windows
 
 ```powershell
 # One command (from repo root)
-pwsh -File .\run.ps1
+.\run.cmd
 
 # Or two terminals (from folder with BndzFinder.sln)
 dotnet run --project src\BndzFinder.ShellHost\BndzFinder.ShellHost.csproj -c Release
