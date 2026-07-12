@@ -1,0 +1,31 @@
+<UserControl
+    x:Class="BndzFinder.Dock.Controls.FolderStackFlyout"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Border x:Name="FlyoutRoot" CornerRadius="16" Padding="12"
+            Background="#CC1A1A1A" BorderBrush="#20FFFFFF" BorderThickness="1">
+        <Grid>
+            <Canvas x:Name="FanCanvas" Visibility="Collapsed" />
+            <ItemsControl x:Name="GridList" Visibility="Collapsed">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Columns="4" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button Padding="4" Background="Transparent" BorderThickness="0">
+                            <StackPanel Spacing="4" Width="64">
+                                <FontIcon Glyph="&#xE8B7;" FontSize="28" />
+                                <TextBlock Text="{Binding Name}" FontSize="10" TextTrimming="CharacterEllipsis"
+                                           HorizontalAlignment="Center" TextAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <ListView x:Name="ListView" Visibility="Collapsed" SelectionMode="None" />
+        </Grid>
+    </Border>
+</UserControl>

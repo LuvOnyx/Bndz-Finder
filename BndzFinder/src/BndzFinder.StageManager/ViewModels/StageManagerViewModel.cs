@@ -1,4 +1,5 @@
 using BndzFinder.Core.Services;
+using BndzFinder.Interop;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -37,22 +38,5 @@ public partial class StageManagerViewModel : ObservableObject
     {
         if (!OperatingSystem.IsWindows()) return;
         _ = item.Hwnd;
-    }
-}
-
-public sealed class WindowThumbnailItem
-{
-    public required nint Hwnd { get; init; }
-    public required string Title { get; init; }
-    public byte[]? Thumbnail { get; init; }
-}
-
-public static class WindowEnumerationService
-{
-    public static IReadOnlyList<WindowThumbnailItem> GetOpenWindows(IReadOnlyList<string> blacklist)
-    {
-        if (!OperatingSystem.IsWindows()) return [];
-        _ = blacklist;
-        return [];
     }
 }

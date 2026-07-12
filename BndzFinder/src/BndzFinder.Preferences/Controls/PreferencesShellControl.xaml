@@ -1,0 +1,51 @@
+<UserControl
+    x:Class="BndzFinder.Preferences.Controls.PreferencesShellControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid>
+        <NavigationView x:Name="Nav" PaneDisplayMode="Left" IsBackButtonVisible="Collapsed"
+                        SelectionChanged="OnSectionChanged">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="General" Tag="General" />
+                <NavigationViewItem Content="Appearance" Tag="Appearance" />
+                <NavigationViewItem Content="System Icon Tray" Tag="SystemIconTray" />
+                <NavigationViewItem Content="Screen" Tag="Screen" />
+                <NavigationViewItem Content="Look and Behavior" Tag="LookAndBehavior" />
+                <NavigationViewItem Content="Launchpad" Tag="Launchpad" />
+                <NavigationViewItem Content="Window Animations" Tag="WindowAnimations" />
+                <NavigationViewItem Content="Audio / Display / Network" Tag="AudioDisplayNetwork" />
+                <NavigationViewItem Content="Hot Corners and Hotkeys" Tag="Advanced" />
+                <NavigationViewItem Content="Themes" Tag="Themes" />
+            </NavigationView.MenuItems>
+
+            <ScrollViewer x:Name="SectionContent" Padding="24">
+                <StackPanel x:Name="SectionPanel" Spacing="16" MaxWidth="640">
+                    <TextBlock x:Name="SectionTitle" FontSize="24" FontWeight="SemiBold" />
+                    <StackPanel x:Name="GeneralSection" Spacing="12">
+                        <TextBlock Text="Dock position" />
+                        <ComboBox x:Name="DockPositionBox" Width="240" />
+                        <ToggleSwitch x:Name="AutoHideDock" Header="Automatically hide and show the Dock" />
+                    </StackPanel>
+                    <StackPanel x:Name="AppearanceSection" Spacing="12" Visibility="Collapsed">
+                        <TextBlock Text="Glass effect" />
+                        <ComboBox x:Name="GlassEffectBox" Width="240" />
+                        <TextBlock Text="Icon hover effect" />
+                        <ComboBox x:Name="IconEffectBox" Width="240" />
+                    </StackPanel>
+                    <StackPanel x:Name="WindowAnimationsSection" Spacing="12" Visibility="Collapsed">
+                        <TextBlock Text="Minimize windows using" />
+                        <ComboBox x:Name="MinimizeEffectBox" Width="240" />
+                    </StackPanel>
+                    <StackPanel x:Name="AdvancedSection" Spacing="12" Visibility="Collapsed">
+                        <TextBlock Text="Launchpad hotkey" />
+                        <TextBox x:Name="LaunchpadHotkeyBox" Width="240" IsReadOnly="True" />
+                        <TextBlock Text="Stage Manager hotkey" />
+                        <TextBox x:Name="StageManagerHotkeyBox" Width="240" IsReadOnly="True" />
+                    </StackPanel>
+                    <Button x:Name="SaveButton" Content="Save" HorizontalAlignment="Left" Click="OnSave" />
+                </StackPanel>
+            </ScrollViewer>
+        </NavigationView>
+    </Grid>
+</UserControl>

@@ -20,7 +20,16 @@ public static class Loc
             ["Section.Themes"] = "Themes",
             ["Dock.Position"] = "Position on screen",
             ["Dock.MinimizeEffect"] = "Minimize windows using",
-            ["Dock.AutoHide"] = "Automatically hide and show the Dock"
+            ["Dock.AutoHide"] = "Automatically hide and show the Dock",
+            ["Dock.GlassEffect"] = "Glass effect",
+            ["Dock.IconEffect"] = "Icon hover effect",
+            ["Finder.Wifi"] = "Wi-Fi",
+            ["Finder.Bluetooth"] = "Bluetooth",
+            ["Finder.Audio"] = "Sound",
+            ["Finder.Display"] = "Display",
+            ["Launchpad.Search"] = "Search",
+            ["StageManager.Windows"] = "Open windows",
+            ["Save"] = "Save"
         },
         ["es"] = new()
         {

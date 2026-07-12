@@ -1,36 +1,94 @@
+using System.Management;
 using BndzFinder.Core.Services;
+using BndzFinder.Shell.Services;
+using BndzFinder.Interop;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace BndzFinder.Finder.ViewModels;
 
 public partial class FinderViewModel : ObservableObject
 {
     private readonly ISettingsService _settings;
-    private readonly SystemMetricsService _metrics;
+    private readonly ISystemMetricsService _metrics;
+    private readonly ITrayMirrorFacade _trayMirror;
+    private readonly WeatherService _weather;
 
     [ObservableProperty] private double _cpuUsage;
     [ObservableProperty] private double _memoryUsage;
     [ObservableProperty] private double _gpuUsage;
+    [ObservableProperty] private double _diskUsage;
+    [ObservableProperty] private double _networkUpKbps;
     [ObservableProperty] private int _batteryPercent = 100;
+    [ObservableProperty] private string _batteryTimeRemaining = string.Empty;
     [ObservableProperty] private string _clockText = DateTime.Now.ToString("h:mm tt");
+    [ObservableProperty] private string _dateText = DateTime.Now.ToString("ddd MMM d");
+    [ObservableProperty] private string _weatherText = "—";
+    [ObservableProperty] private string _keyboardLayout = "EN";
     [ObservableProperty] private IReadOnlyList<TrayProxyItem> _trayIcons = [];
+    [ObservableProperty] private bool _isDark;
+    [ObservableProperty] private double _barHeight = 28;
 
-    public FinderViewModel(ISettingsService settings, SystemMetricsService? metrics = null)
+    public bool ShowCpu => _settings.Current.ShowCpu;
+    public bool ShowGpu => _settings.Current.ShowGpu;
+    public bool ShowMemory => _settings.Current.ShowMemory;
+    public bool ShowDisk => _settings.Current.ShowDisk;
+    public bool ShowNetwork => _settings.Current.ShowNetwork;
+    public bool ShowBattery => _settings.Current.ShowBattery;
+    public bool ShowWeather => _settings.Current.ShowWeather;
+    public bool ShowAudio => _settings.Current.ShowAudio;
+    public bool ShowBluetooth => _settings.Current.ShowBluetooth;
+    public bool ShowNotifications => _settings.Current.ShowNotifications;
+    public bool ShowKeyboard => _settings.Current.ShowKeyboard;
+
+    public FinderViewModel(
+        ISettingsService settings,
+        ISystemMetricsService? metrics = null,
+        ITrayMirrorFacade? trayMirror = null,
+        WeatherService? weather = null)
     {
         _settings = settings;
-        _metrics = metrics ?? new SystemMetricsService();
+        _metrics = metrics ?? new WmiSystemMetricsService();
+        _trayMirror = trayMirror ?? new TrayMirrorFacade(new TrayIconMirrorService());
+        _weather = weather ?? new WeatherService();
+        BarHeight = settings.Current.FinderHeight;
+        _settings.SettingsChanged += (_, _) =>
+        {
+            BarHeight = _settings.Current.FinderHeight;
+            OnPropertyChanged(nameof(ShowCpu));
+            OnPropertyChanged(nameof(ShowMemory));
+        };
         _ = StartPollingAsync();
     }
+
+    [RelayCommand]
+    public void OpenControlCenter(string panel) => _ = panel;
+
+    [RelayCommand]
+    public void ClickTrayIcon(TrayProxyItem item) => _trayMirror.ForwardClick(item);
 
     private async Task StartPollingAsync()
     {
         while (true)
         {
-            CpuUsage = await _metrics.GetCpuUsageAsync().ConfigureAwait(false);
-            MemoryUsage = await _metrics.GetMemoryUsageAsync().ConfigureAwait(false);
-            GpuUsage = await _metrics.GetGpuUsageAsync().ConfigureAwait(false);
-            BatteryPercent = await _metrics.GetBatteryPercentAsync().ConfigureAwait(false);
-            ClockText = DateTime.Now.ToString($"{_settings.Current.TimeFormat}");
+            try
+            {
+                CpuUsage = await _metrics.GetCpuUsageAsync().ConfigureAwait(false);
+                MemoryUsage = await _metrics.GetMemoryUsageAsync().ConfigureAwait(false);
+                GpuUsage = await _metrics.GetGpuUsageAsync().ConfigureAwait(false);
+                DiskUsage = await _metrics.GetDiskUsageAsync().ConfigureAwait(false);
+                NetworkUpKbps = await _metrics.GetNetworkKbpsAsync().ConfigureAwait(false);
+                BatteryPercent = await _metrics.GetBatteryPercentAsync().ConfigureAwait(false);
+                BatteryTimeRemaining = await _metrics.GetBatteryTimeRemainingAsync().ConfigureAwait(false);
+                ClockText = DateTime.Now.ToString(_settings.Current.TimeFormat);
+                DateText = DateTime.Now.ToString(_settings.Current.DateFormat);
+                WeatherText = _settings.Current.ShowWeather ? _weather.GetCurrentCondition() : "—";
+                TrayIcons = await _trayMirror.GetIconsAsync().ConfigureAwait(false);
+            }
+            catch
+            {
+                // Polling continues on transient WMI failures.
+            }
             await Task.Delay(1000).ConfigureAwait(false);
         }
     }
@@ -39,13 +97,104 @@ public partial class FinderViewModel : ObservableObject
 public sealed class TrayProxyItem
 {
     public required string Tooltip { get; init; }
+    public nint OwnerWindow { get; init; }
+    public uint IconId { get; init; }
     public byte[]? IconData { get; init; }
 }
 
-public sealed class SystemMetricsService
+public interface ISystemMetricsService
 {
-    public Task<double> GetCpuUsageAsync() => Task.FromResult(0.0);
-    public Task<double> GetMemoryUsageAsync() => Task.FromResult(0.0);
+    Task<double> GetCpuUsageAsync();
+    Task<double> GetMemoryUsageAsync();
+    Task<double> GetGpuUsageAsync();
+    Task<double> GetDiskUsageAsync();
+    Task<double> GetNetworkKbpsAsync();
+    Task<int> GetBatteryPercentAsync();
+    Task<string> GetBatteryTimeRemainingAsync();
+}
+
+public interface ITrayMirrorFacade
+{
+    Task<IReadOnlyList<TrayProxyItem>> GetIconsAsync();
+    void ForwardClick(TrayProxyItem item);
+}
+
+public sealed class TrayMirrorFacade : ITrayMirrorFacade
+{
+    private readonly TrayIconMirrorService _mirror;
+
+    public TrayMirrorFacade(TrayIconMirrorService mirror) => _mirror = mirror;
+
+    public Task<IReadOnlyList<TrayProxyItem>> GetIconsAsync()
+    {
+        var icons = _mirror.GetVisibleTrayIcons();
+        return Task.FromResult<IReadOnlyList<TrayProxyItem>>(icons.Select(i => new TrayProxyItem
+        {
+            Tooltip = i.Tooltip,
+            OwnerWindow = i.OwnerWindow,
+            IconId = i.IconId,
+            IconData = i.IconData
+        }).ToList());
+    }
+
+    public void ForwardClick(TrayProxyItem item) => _mirror.ForwardClick(item.OwnerWindow, item.IconId);
+}
+
+public sealed class WmiSystemMetricsService : ISystemMetricsService
+{
+    public Task<double> GetCpuUsageAsync()
+    {
+        if (!OperatingSystem.IsWindows()) return Task.FromResult(0.0);
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(
+                "SELECT LoadPercentage FROM Win32_Processor");
+            foreach (ManagementObject obj in searcher.Get())
+            {
+                return Task.FromResult(Convert.ToDouble(obj["LoadPercentage"]));
+            }
+        }
+        catch { }
+        return Task.FromResult(0.0);
+    }
+
+    public Task<double> GetMemoryUsageAsync()
+    {
+        if (!OperatingSystem.IsWindows()) return Task.FromResult(0.0);
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(
+                "SELECT TotalVisibleMemorySize,FreePhysicalMemory FROM Win32_OperatingSystem");
+            foreach (ManagementObject obj in searcher.Get())
+            {
+                var total = Convert.ToDouble(obj["TotalVisibleMemorySize"]);
+                var free = Convert.ToDouble(obj["FreePhysicalMemory"]);
+                return Task.FromResult(total > 0 ? (total - free) / total * 100 : 0);
+            }
+        }
+        catch { }
+        return Task.FromResult(0.0);
+    }
+
     public Task<double> GetGpuUsageAsync() => Task.FromResult(0.0);
-    public Task<int> GetBatteryPercentAsync() => Task.FromResult(100);
+    public Task<double> GetDiskUsageAsync() => Task.FromResult(0.0);
+    public Task<double> GetNetworkKbpsAsync() => Task.FromResult(0.0);
+
+    public Task<int> GetBatteryPercentAsync()
+    {
+        if (!OperatingSystem.IsWindows()) return Task.FromResult(100);
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(
+                "SELECT EstimatedChargeRemaining FROM Win32_Battery");
+            foreach (ManagementObject obj in searcher.Get())
+            {
+                return Task.FromResult(Convert.ToInt32(obj["EstimatedChargeRemaining"]));
+            }
+        }
+        catch { }
+        return Task.FromResult(100);
+    }
+
+    public Task<string> GetBatteryTimeRemainingAsync() => Task.FromResult(string.Empty);
 }
