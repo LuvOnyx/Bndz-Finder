@@ -129,6 +129,33 @@ Start-Sleep -Seconds 2
 Start-Process $app
 ```
 
+## First restore timing
+
+The **first** `dotnet restore` on a fresh clone is slow — that is normal.
+
+| Phase | Typical time (good WiFi) |
+|-------|--------------------------|
+| First restore (WinUI / Windows App SDK) | **5–15 minutes** |
+| Later restores (packages cached) | **10–30 seconds** |
+| Full Release build (after restore) | **2–5 minutes** |
+
+WinUI pulls large packages (`Microsoft.WindowsAppSDK`, `Microsoft.Windows.SDK.BuildTools`, CommunityToolkit WinUI, etc.). If WiFi drops mid-download you will see `NU1301` / `NU1101` / `No such host is known` after several minutes — **not a code bug**.
+
+**When back online**, just re-run:
+
+```powershell
+.\build.cmd
+# or
+.\run.cmd
+```
+
+Only clear the cache if restore keeps failing with corrupt-package errors:
+
+```powershell
+dotnet nuget locals all --clear
+.\build.cmd
+```
+
 ## Settings
 
 - `%APPDATA%\BndzFinder\settings.json`
@@ -142,7 +169,7 @@ Start-Process $app
 | `not digitally signed` / execution policy | Use **`.\run.cmd`** or **`.\build.cmd`** instead of `.ps1`, or `pwsh -ExecutionPolicy Bypass -File .\run.ps1` |
 | `BndzFinder.sln not found` | `cd` to folder containing `BndzFinder.sln` |
 | `dotnet not found` | Install .NET 9 SDK |
-| `NU1301` / `No such host is known` (nuget.org) | **Network/DNS issue** — not a code bug. Verify `ping www.nuget.org`, disable VPN/proxy, check firewall. First WinUI restore needs internet for `Microsoft.WindowsAppSDK`. Retry: `dotnet nuget locals all --clear` then `.\build.cmd` |
+| `NU1301` / `No such host is known` (nuget.org) | **Network dropped or DNS issue.** Reconnect WiFi, `ping www.nuget.org`, then `.\build.cmd`. First restore needs internet; do not clear cache unless corrupt |
 | SDK 10 with pinned .NET 9 | Install [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) alongside SDK 10, or use `global.json` rollForward |
 | WinUI build fails | Install Windows App SDK / VS Build Tools with C++ workload |
 | No dock visible | Ensure ShellHost is running; check single-instance lock in `%TEMP%` |

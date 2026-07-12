@@ -36,17 +36,24 @@ function Invoke-DotNet {
 }
 
 function Test-NuGetConnectivity {
-    try {
-        $resolved = [System.Net.Dns]::GetHostEntry('www.nuget.org')
-        if ($resolved.AddressList.Count -gt 0) {
-            return $true
+    foreach ($hostName in @('www.nuget.org', 'api.nuget.org')) {
+        try {
+            $resolved = [System.Net.Dns]::GetHostEntry($hostName)
+            if ($resolved.AddressList.Count -gt 0) {
+                return $true
+            }
         }
-    }
-    catch {
-        return $false
+        catch {
+            continue
+        }
     }
 
     return $false
+}
+
+function Test-WindowsAppSdkCached {
+    $packageRoot = Join-Path $env:USERPROFILE '.nuget\packages\microsoft.windowsappsdk\1.6.250108002'
+    return Test-Path $packageRoot
 }
 
 if (-not (Test-Path $Sln)) {
@@ -63,11 +70,25 @@ if (-not (Test-Path $Sln)) {
 Write-Host "Project root: $Root" -ForegroundColor DarkGray
 
 if (-not (Test-NuGetConnectivity)) {
-    Write-Host "WARNING: Cannot resolve www.nuget.org (DNS/network issue)." -ForegroundColor Yellow
-    Write-Host "WinUI projects require Microsoft.WindowsAppSDK from NuGet on first restore." -ForegroundColor Yellow
-    Write-Host "Fix connectivity (DNS, firewall, VPN, proxy) then re-run build." -ForegroundColor Yellow
-    Write-Host "See BndzFinder/docs/WINDOWS_DEV.md for NU1301 troubleshooting." -ForegroundColor Yellow
-    Write-Host ""
+    if (Test-WindowsAppSdkCached) {
+        Write-Host "WARNING: NuGet is unreachable — continuing with cached packages only." -ForegroundColor Yellow
+        Write-Host "If restore fails, reconnect to the internet and run .\build.cmd again." -ForegroundColor Yellow
+        Write-Host ""
+    }
+    else {
+        Write-Host "ERROR: No internet and Windows App SDK is not cached yet." -ForegroundColor Red
+        Write-Host ""
+        Write-Host "First-time restore downloads ~500MB+ from NuGet (WindowsAppSDK, WinUI, SDK Build Tools)." -ForegroundColor Yellow
+        Write-Host "A good connection usually takes 5-15 minutes. Yours failed because WiFi/DNS dropped." -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "When back online:" -ForegroundColor Cyan
+        Write-Host "  1. ping www.nuget.org"
+        Write-Host "  2. .\build.cmd          # or .\run.cmd"
+        Write-Host ""
+        Write-Host "Do NOT clear the NuGet cache unless packages are corrupted — partial downloads can resume." -ForegroundColor DarkGray
+        Write-Host "See BndzFinder/docs/WINDOWS_DEV.md for NU1301 troubleshooting." -ForegroundColor DarkGray
+        exit 1
+    }
 }
 
 Write-Host "==> Restoring BndzFinder.sln..." -ForegroundColor Cyan
