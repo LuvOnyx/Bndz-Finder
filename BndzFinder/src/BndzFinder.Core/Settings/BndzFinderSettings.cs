@@ -43,6 +43,9 @@ public sealed class BndzFinderSettings
     public bool WindowsBorderMode { get; set; } = true;
     public bool CenterNewWindows { get; set; }
     public GlassEffect DockGlassEffect { get; set; } = GlassEffect.Acrylic;
+    public LiquidGlassSettings LiquidGlass { get; set; } = new();
+    public double DockOpacity { get; set; } = 0.82;
+    public double DockCornerRadius { get; set; } = 24;
 
     // MyFinder
     public bool FinderEnabled { get; set; } = true;

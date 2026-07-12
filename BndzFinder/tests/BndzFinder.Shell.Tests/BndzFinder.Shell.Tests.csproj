@@ -12,5 +12,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\BndzFinder.Shell\BndzFinder.Shell.csproj" />
     <ProjectReference Include="..\..\src\BndzFinder.Animations\BndzFinder.Animations.csproj" />
+    <ProjectReference Include="..\..\src\BndzFinder.Theming\BndzFinder.Theming.csproj" />
   </ItemGroup>
 </Project>

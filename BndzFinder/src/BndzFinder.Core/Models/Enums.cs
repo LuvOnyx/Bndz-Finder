@@ -27,6 +27,18 @@ public enum IconHoverEffect
     ScaleLight = 4
 }
 
+/// <summary>
+/// Cross-layer icon effect kind used by layout engine and theming.
+/// </summary>
+public enum IconEffectKind
+{
+    None = 0,
+    Scale = 1,
+    Select = 2,
+    Light = 3,
+    ScaleLight = 4
+}
+
 public enum MinimizeEffect
 {
     Genie = 0,

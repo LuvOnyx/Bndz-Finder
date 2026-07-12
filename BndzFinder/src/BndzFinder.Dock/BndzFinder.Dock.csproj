@@ -14,5 +14,6 @@
     <ProjectReference Include="..\BndzFinder.Shell\BndzFinder.Shell.csproj" />
     <ProjectReference Include="..\BndzFinder.Interop\BndzFinder.Interop.csproj" />
     <ProjectReference Include="..\BndzFinder.Animations\BndzFinder.Animations.csproj" />
+    <ProjectReference Include="..\BndzFinder.Theming\BndzFinder.Theming.csproj" />
   </ItemGroup>
 </Project>

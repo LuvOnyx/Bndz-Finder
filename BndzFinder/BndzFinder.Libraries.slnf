@@ -1,0 +1,15 @@
+{
+  "solution": {
+    "path": "BndzFinder.sln",
+    "projects": [
+      "src\\BndzFinder.Core\\BndzFinder.Core.csproj",
+      "src\\BndzFinder.Interop\\BndzFinder.Interop.csproj",
+      "src\\BndzFinder.Shell\\BndzFinder.Shell.csproj",
+      "src\\BndzFinder.Animations\\BndzFinder.Animations.csproj",
+      "src\\BndzFinder.Theming\\BndzFinder.Theming.csproj",
+      "src\\BndzFinder.ShellHost\\BndzFinder.ShellHost.csproj",
+      "tests\\BndzFinder.Core.Tests\\BndzFinder.Core.Tests.csproj",
+      "tests\\BndzFinder.Shell.Tests\\BndzFinder.Shell.Tests.csproj"
+    ]
+  }
+}

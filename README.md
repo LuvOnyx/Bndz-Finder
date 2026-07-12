@@ -17,22 +17,37 @@ Premium macOS-style Windows shell overlay — MyDock, MyFinder, Launchpad, and S
 
 ## Build
 
-```powershell
-cd BndzFinder
-dotnet build BndzFinder.sln -c Release
+### Cross-platform (libraries + tests — Linux/macOS/CI)
+
+```bash
+bash BndzFinder/scripts/build.sh
+# or
+bash BndzFinder/scripts/dev.sh
 ```
 
-Run the host (Windows):
+### Full Windows build (WinUI 3 + dock UI)
 
 ```powershell
-dotnet run --project src/BndzFinder.App/BndzFinder.App.csproj
+pwsh -File BndzFinder/scripts/build.ps1
+pwsh -File BndzFinder/scripts/build.ps1 -Publish   # portable self-contained exe
 ```
 
-Run ShellHost companion (required for minimize-to-dock):
+### Run on Windows
 
 ```powershell
-dotnet run --project src/BndzFinder.ShellHost/BndzFinder.ShellHost.csproj
+# ShellHost must run for minimize-to-dock
+dotnet run --project BndzFinder/src/BndzFinder.ShellHost/BndzFinder.ShellHost.csproj
+dotnet run --project BndzFinder/src/BndzFinder.App/BndzFinder.App.csproj
 ```
+
+## Premium Dock Features (this release)
+
+- **Glass backdrops**: Translucent, Acrylic, Mica, Liquid Glass with configurable blur/opacity/saturation
+- **Icon zoom**: macOS fisheye magnification with Scale, Select, Light, Scale+Light hover effects
+- **3D immersion**: tilt + vertical lift on magnified icons
+- **Icon reflections**: configurable opacity/blur with shadow layers
+- **Running indicators**: per-app dots on dock icons
+- **WinUI dock bar**: `DockBarControl` with `AcrylicBrush`, `DockIconControl` with live effect binding
 
 ## Project Layout
 
