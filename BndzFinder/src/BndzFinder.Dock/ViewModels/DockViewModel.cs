@@ -50,6 +50,8 @@ public partial class DockViewModel : ObservableObject
 
     public bool PreviewEnabled => _settings.Current.PreviewOn;
 
+    public bool IsRunning(DockItem item) => _runningApps.Contains(item.Id);
+
     public event Action<long>? PreviewShowRequested;
     public event Action? PreviewHideRequested;
 
@@ -189,6 +191,56 @@ public partial class DockViewModel : ObservableObject
         await Task.CompletedTask;
     }
 
+    [RelayCommand]
+    public async Task PinRunningItemAsync(DockItem item)
+    {
+        if (_settings.Current.LockIcons || item.IsPinned) return;
+        if (item.Kind is not DockItemKind.Application and not DockItemKind.File) return;
+
+        var settings = _settings.Current;
+        var pinned = new DockItem
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Kind = item.Kind,
+            TargetPath = item.TargetPath,
+            DisplayName = item.DisplayName ?? Path.GetFileNameWithoutExtension(item.TargetPath),
+            IsPinned = true,
+            SortOrder = settings.DockItems.Count
+        };
+        settings.DockItems.Add(pinned);
+        await _iconPipeline.ProcessAsync(item.TargetPath).ConfigureAwait(false);
+        await _settings.SaveAsync().ConfigureAwait(false);
+        RefreshAll();
+    }
+
+    [RelayCommand]
+    public async Task RemoveFromDockAsync(DockItem item)
+    {
+        if (item.IsLocked || _settings.Current.LockIcons) return;
+        if (item.Id.StartsWith("running:", StringComparison.OrdinalIgnoreCase)) return;
+
+        _settings.Current.DockItems.RemoveAll(i => i.Id == item.Id);
+        await _settings.SaveAsync().ConfigureAwait(false);
+        RefreshAll();
+    }
+
+    [RelayCommand]
+    public Task QuitApplicationAsync(DockItem item)
+    {
+        if (!OperatingSystem.IsWindows()) return Task.CompletedTask;
+        if (item.Kind is not DockItemKind.Application) return Task.CompletedTask;
+
+        var name = Path.GetFileNameWithoutExtension(item.TargetPath);
+        foreach (var proc in System.Diagnostics.Process.GetProcessesByName(name))
+        {
+            try { proc.CloseMainWindow(); proc.WaitForExit(1500); if (!proc.HasExited) proc.Kill(); }
+            catch { /* access denied */ }
+        }
+
+        RefreshAll();
+        return Task.CompletedTask;
+    }
+
     public void RefreshAll()
     {
         RefreshRunningApps();
@@ -291,7 +343,7 @@ public partial class DockViewModel : ObservableObject
         }
     }
 
-    private void RefreshLayout()
+    public void RefreshLayout()
     {
         var s = _settings.Current;
         var items = _effectiveItems.Count > 0 ? _effectiveItems : s.DockItems;

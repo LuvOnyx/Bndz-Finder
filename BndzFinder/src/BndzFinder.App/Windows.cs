@@ -14,7 +14,8 @@ using BndzFinder.Preferences.Localization;
 using BndzFinder.Preferences.ViewModels;
 using BndzFinder.StageManager.Controls;
 using BndzFinder.StageManager.ViewModels;
-using BndzFinder.Theming.Customization;
+using BndzFinder.Shell.Assets;
+using BndzFinder.Shell.Services;
 using BndzFinder.Theming.Glass;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -66,12 +67,17 @@ public partial class App : Application
             var overlays = Services.GetRequiredService<IShellOverlayController>();
             var dockVm = Services.GetRequiredService<DockViewModel>();
 
+            Services.GetRequiredService<IMacBrandingBootstrap>().EnsureBrandingAssets();
+
+            var taskbarLifecycle = Services.GetRequiredService<ITaskbarLifecycleService>();
+            taskbarLifecycle.EnableReplacementMode();
+
             // Show the dock BEFORE any await — WinUI exits if no window exists during async startup.
             _dockWindow = new DockWindow();
             _dockWindow.Activate();
             _dockWindow.InitializePlacement();
             _dockWindow.ApplyVisibility(true);
-            Services.GetRequiredService<ITaskbarLifecycleService>().SyncWithDock(true);
+            taskbarLifecycle.SyncWithDock(true);
 
             var orchestrator = Services.GetRequiredService<IShellOrchestrator>();
             await orchestrator.StartAsync().ConfigureAwait(true);
@@ -188,7 +194,9 @@ public partial class App : Application
         services.AddSingleton<ITaskbarLifecycleService>(sp => new TaskbarLifecycleService(
             sp.GetRequiredService<ITaskbarController>(),
             () => sp.GetRequiredService<ISettingsService>().Current.HideTaskbarWhenDockShown,
-            () => sp.GetRequiredService<ISettingsService>().Current.HideTaskbarAllMonitors));
+            () => sp.GetRequiredService<ISettingsService>().Current.HideTaskbarAllMonitors,
+            () => sp.GetRequiredService<ISettingsService>().Current.AutoHideTaskbarAtStartup));
+        services.AddSingleton<IMacBrandingBootstrap, MacBrandingBootstrap>();
         services.AddSingleton<IWindowPreviewService, WindowPreviewService>();
         services.AddSingleton<IWindowCaptureService, WindowCaptureService>();
         services.AddSingleton<ISystemMetricsService, WmiSystemMetricsService>();

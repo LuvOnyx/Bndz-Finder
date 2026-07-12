@@ -1,6 +1,6 @@
 # Bndz-Finder
 
-Premium macOS-style Windows shell overlay — MyDock, MyFinder, Launchpad, and Stage Manager.
+macOS-style **Windows taskbar replacement** — MyDock, MyFinder menu bar, Launchpad, and Stage Manager. The native Windows taskbar is hidden while Bndz-Finder runs; the dock registers AppBar space at the screen edge (not a floating overlay).
 
 ## Stack
 

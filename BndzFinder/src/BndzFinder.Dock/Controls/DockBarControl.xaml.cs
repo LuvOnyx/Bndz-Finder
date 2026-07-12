@@ -117,6 +117,11 @@ public sealed partial class DockBarControl : UserControl
                 if (iconVm.Layout?.Item is { } item)
                     _ = ViewModel.HandleItemClickAsync(item);
             };
+            control.RightTapped += (_, e) =>
+            {
+                if (iconVm.Layout?.Item is { } item)
+                    ShowIconContextMenu(item, control, e);
+            };
             IconCanvas.Children.Add(control);
             _iconControls.Add(control);
         }
@@ -181,4 +186,81 @@ public sealed partial class DockBarControl : UserControl
     {
         ViewModel?.OnPointerExited();
     }
+
+    private void ShowIconContextMenu(DockItem item, DockIconControl anchor, RightTappedRoutedEventArgs e)
+    {
+        if (ViewModel is null) return;
+        e.Handled = true;
+
+        var menu = new MenuFlyout();
+        var isEphemeral = item.Id.StartsWith("running:", StringComparison.OrdinalIgnoreCase);
+        var isApp = item.Kind is Core.Models.DockItemKind.Application or Core.Models.DockItemKind.File;
+
+        if (isApp)
+        {
+            menu.Items.Add(new MenuFlyoutItem
+            {
+                Text = "Open",
+                Command = ViewModel.LaunchItemCommand,
+                CommandParameter = item
+            });
+        }
+
+        if (isApp && isEphemeral && !item.IsPinned)
+        {
+            menu.Items.Add(new MenuFlyoutItem
+            {
+                Text = "Keep in Dock",
+                Command = ViewModel.PinRunningItemCommand,
+                CommandParameter = item
+            });
+        }
+
+        if (item.Kind is Core.Models.DockItemKind.Folder)
+        {
+            menu.Items.Add(new MenuFlyoutItem
+            {
+                Text = "Open Stack",
+                Command = ViewModel.HandleItemClickCommand,
+                CommandParameter = item
+            });
+        }
+
+        if (item.Kind is Core.Models.DockItemKind.SystemPreferences)
+        {
+            menu.Items.Add(new MenuFlyoutItem
+            {
+                Text = "Dock Preferences…",
+                Command = ViewModel.HandleItemClickCommand,
+                CommandParameter = item
+            });
+        }
+
+        if (isApp && _runningAppsContains(item))
+        {
+            menu.Items.Add(new MenuFlyoutSeparator());
+            menu.Items.Add(new MenuFlyoutItem
+            {
+                Text = "Quit",
+                Command = ViewModel.QuitApplicationCommand,
+                CommandParameter = item
+            });
+        }
+
+        if (!isEphemeral && item.IsPinned && item.Kind is Core.Models.DockItemKind.Application or Core.Models.DockItemKind.File or Core.Models.DockItemKind.Folder)
+        {
+            menu.Items.Add(new MenuFlyoutSeparator());
+            menu.Items.Add(new MenuFlyoutItem
+            {
+                Text = "Remove from Dock",
+                Command = ViewModel.RemoveFromDockCommand,
+                CommandParameter = item
+            });
+        }
+
+        if (menu.Items.Count > 0)
+            menu.ShowAt(anchor);
+    }
+
+    private bool _runningAppsContains(DockItem item) => ViewModel?.IsRunning(item) == true;
 }

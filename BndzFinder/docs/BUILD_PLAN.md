@@ -39,13 +39,15 @@ These are why the product does not look or behave like MyDockFinder:
 ### Sprint A — Runnable product shell *(this branch)*
 
 - [x] Fix WinUI 3 `OnExit` build error
-- [ ] `RunningAppSyncService` — enumerate open windows → dock items
-- [ ] `WindowsFileIconExtractor` — SHGetFileInfo → PNG cache for exe/lnk
-- [ ] `SystemIconFallbackGenerator` — Skia glyphs when macosicons not imported
-- [ ] Finder visible on launch + top `AppBarService` registration
-- [ ] Tray `IconData` over IPC + image buttons in Finder
-- [ ] Launchpad `Image` binding from icon pipeline
-- [ ] Dock hide-delay timer
+- [x] **Taskbar replacement mode** — hides native taskbar + watchdog while shell runs
+- [x] `RunningAppSyncService` — enumerate open windows → dock items
+- [x] `WindowsFileIconExtractor` — SHGetFileInfo → PNG cache for exe/lnk
+- [x] **macOS squircle system icon fallbacks** (1024px Apple proportions)
+- [x] Finder visible on launch + top `AppBarService` registration
+- [x] **Dock context menus** (Open, Keep in Dock, Quit, Remove, Preferences)
+- [x] Tray `IconData` over IPC + image buttons in Finder
+- [x] Launchpad `Image` binding from icon pipeline
+- [x] Dock hide-delay timer
 
 ### Sprint B — MyDockFinder signature features
 
