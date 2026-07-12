@@ -62,11 +62,19 @@ public class CompletionPlanTests
     }
 
     [Fact]
-    public void AssetCatalog_ResolvesSystemIcons()
+    public void AssetCatalog_ResolvesSystemIconPaths()
     {
         var catalog = new AssetCatalogService();
         var path = catalog.ResolvePath("icon-finder");
-        Assert.EndsWith("finder.svg", path);
+        Assert.EndsWith("finder.png", path);
+    }
+
+    [Fact]
+    public void AssetCatalog_TracksMissingSystemIcons()
+    {
+        var catalog = new AssetCatalogService();
+        var missing = catalog.GetMissingSystemIcons();
+        Assert.Contains("icon-finder", missing);
     }
 
     [Fact]
