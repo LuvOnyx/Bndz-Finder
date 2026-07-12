@@ -24,18 +24,6 @@ public sealed partial class FinderBarControl : UserControl
     public FinderBarControl()
     {
         InitializeComponent();
-        Resources["FinderWidgetButton"] = CreateWidgetButtonStyle();
-    }
-
-    private static Style CreateWidgetButtonStyle()
-    {
-        var style = new Style { TargetType = typeof(Button) };
-        style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(6, 2, 6, 2)));
-        style.Setters.Add(new Setter(Control.BackgroundProperty, new SolidColorBrush(Color.FromArgb(0, 0, 0, 0))));
-        style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
-        style.Setters.Add(new Setter(Control.ForegroundProperty, new SolidColorBrush(Color.FromArgb(230, 255, 255, 255))));
-        style.Setters.Add(new Setter(Control.CornerRadiusProperty, new CornerRadius(6)));
-        return style;
     }
 
     private static void OnViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

@@ -179,6 +179,16 @@ if (-not (Test-Path $Sln)) {
 }
 
 Write-Host "Project root: $Root" -ForegroundColor DarkGray
+Set-Location $Root
+
+$sdkVersion = (dotnet --version).Trim()
+Write-Host "Active .NET SDK: $sdkVersion (from $Root)" -ForegroundColor DarkGray
+if ($sdkVersion -match '^10\.') {
+    Write-Host "ERROR: .NET SDK 10 is active. WinUI requires .NET 9 SDK for this repo." -ForegroundColor Red
+    Write-Host "Install .NET 9, then verify: cd `"$Root`" ; dotnet --version" -ForegroundColor Yellow
+    exit 1
+}
+Write-Host ""
 
 if (-not (Test-NuGetConnectivity)) {
     if (Test-WindowsAppSdkCached) {

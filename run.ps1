@@ -69,14 +69,20 @@ Write-Host ""
 Write-Host "Starting ShellHost (minimize hooks, hotkeys, tray)..." -ForegroundColor Cyan
 $hostJob = Start-Process pwsh -ArgumentList @(
     '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command',
-    "dotnet run --project `"$ShellHostProj`" -c $Configuration"
+    "Set-Location '$ProjectRoot'; dotnet run --project '$ShellHostProj' -c $Configuration"
 ) -PassThru -WindowStyle Normal
 
 Start-Sleep -Seconds 3
 
 Write-Host "Starting Bndz-Finder App (dock UI)..." -ForegroundColor Cyan
 Write-Host "Close both terminal windows to exit." -ForegroundColor Yellow
-dotnet run --project $AppProj -c $Configuration
+Push-Location $ProjectRoot
+try {
+    dotnet run --project $AppProj -c $Configuration
+}
+finally {
+    Pop-Location
+}
 
 if (-not $hostJob.HasExited) {
     Stop-Process -Id $hostJob.Id -Force -ErrorAction SilentlyContinue
