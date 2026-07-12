@@ -1,0 +1,34 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.22621.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Platforms>x64</Platforms>
+    <UseWinUI>true</UseWinUI>
+    <!-- Required for dotnet build without VS Appx workload; uses CLI-compatible PRI tasks. -->
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <EnableDefaultMsixItems>false</EnableDefaultMsixItems>
+    <EnableDefaultPriItems Condition="'$(OutputType)' != 'WinExe'">false</EnableDefaultPriItems>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <NuGetPackageRoot Condition="'$(NuGetPackageRoot)' == ''">$(UserProfile)\.nuget\packages\</NuGetPackageRoot>
+    <_WinSdkBuildToolsRoot>$(NuGetPackageRoot)microsoft.windows.sdk.buildtools\10.0.26100.4654\</_WinSdkBuildToolsRoot>
+    <_AppxToolsV18>$(_WinSdkBuildToolsRoot)tools\MSBuild\Microsoft\VisualStudio\v18.0\AppxPackage\</_AppxToolsV18>
+    <_AppxToolsV17>$(_WinSdkBuildToolsRoot)tools\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\</_AppxToolsV17>
+    <AppxPackageToolsPath Condition="Exists('$(_AppxToolsV18)')">$(_AppxToolsV18)</AppxPackageToolsPath>
+    <AppxPackageToolsPath Condition="'$(AppxPackageToolsPath)' == '' AND Exists('$(_AppxToolsV17)')">$(_AppxToolsV17)</AppxPackageToolsPath>
+    <!-- Class libraries must not run PRI packaging; merged at BndzFinder.App (WinExe). -->
+    <MrtCoreEnablePriGeneration>false</MrtCoreEnablePriGeneration>
+    <MrtCoreEnablePriGeneration Condition="'$(OutputType)' == 'WinExe'">true</MrtCoreEnablePriGeneration>
+    <GenerateLibraryLayout>false</GenerateLibraryLayout>
+    <GenerateProjectPriFile>false</GenerateProjectPriFile>
+    <GenerateProjectPriFile Condition="'$(OutputType)' == 'WinExe'">true</GenerateProjectPriFile>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Partial-property [ObservableProperty] does not source-generate on WinUI+SDK10 yet; field pattern is used. -->
+    <NoWarn>$(NoWarn);MVVMTK0045</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+  </ItemGroup>
+</Project>

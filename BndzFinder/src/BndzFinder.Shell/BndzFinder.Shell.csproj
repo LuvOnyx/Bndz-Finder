@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>BndzFinder.Shell</RootNamespace>
+    <AssemblyName>BndzFinder.Shell</AssemblyName>
+    <Description>Icon pipeline, shortcuts, folder stacks, and badge adapters.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BndzFinder.Core\BndzFinder.Core.csproj" />
+    <ProjectReference Include="..\BndzFinder.Interop\BndzFinder.Interop.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" />
+  </ItemGroup>
+</Project>

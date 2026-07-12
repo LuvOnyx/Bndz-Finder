@@ -1,0 +1,9 @@
+<Project>
+  <!-- Imported last by WinUI class libraries to override WinAppSDK PRI targets after SDK evaluation. -->
+  <PropertyGroup>
+    <MrtCoreEnablePriGeneration>false</MrtCoreEnablePriGeneration>
+    <GenerateLibraryLayout>false</GenerateLibraryLayout>
+    <GenerateProjectPriFile>false</GenerateProjectPriFile>
+    <EnableDefaultPriItems>false</EnableDefaultPriItems>
+  </PropertyGroup>
+</Project>

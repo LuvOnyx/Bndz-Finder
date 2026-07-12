@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <!-- Reinforce PRI disable for WinUI class libraries (also set in Directory.Build.Windows.props). -->
+    <MrtCoreEnablePriGeneration Condition="'$(OutputType)' != 'WinExe'">false</MrtCoreEnablePriGeneration>
+    <GenerateLibraryLayout Condition="'$(OutputType)' != 'WinExe'">false</GenerateLibraryLayout>
+    <GenerateProjectPriFile Condition="'$(OutputType)' != 'WinExe'">false</GenerateProjectPriFile>
+  </PropertyGroup>
+
+  <!-- SDK 10 + WinAppSDK 1.6: Pri.Tasks.dll is absent without full VS Appx workload; skip for class libraries. -->
+  <Target Name="ExpandPriContent" Condition="'$(OutputType)' != 'WinExe'" />
+  <Target Name="GenerateProjectPriFile" Condition="'$(OutputType)' != 'WinExe'" />
+</Project>

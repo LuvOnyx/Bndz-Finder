@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\Directory.Build.Windows.props" />
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <MrtCoreEnablePriGeneration>true</MrtCoreEnablePriGeneration>
+    <GenerateProjectPriFile>true</GenerateProjectPriFile>
+    <RootNamespace>BndzFinder.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Description>Bndz-Finder main WinUI 3 host application.</Description>
+    <!-- Unpackaged WinUI must be self-contained; dotnet run cannot load WinAppSDK native DLLs. -->
+    <SelfContained>true</SelfContained>
+    <PublishTrimmed>false</PublishTrimmed>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="H.NotifyIcon.WinUI" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\..\assets\**\*" Link="assets\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BndzFinder.Core\BndzFinder.Core.csproj" />
+    <ProjectReference Include="..\BndzFinder.Dock\BndzFinder.Dock.csproj" />
+    <ProjectReference Include="..\BndzFinder.Finder\BndzFinder.Finder.csproj" />
+    <ProjectReference Include="..\BndzFinder.Launchpad\BndzFinder.Launchpad.csproj" />
+    <ProjectReference Include="..\BndzFinder.StageManager\BndzFinder.StageManager.csproj" />
+    <ProjectReference Include="..\BndzFinder.Preferences\BndzFinder.Preferences.csproj" />
+    <ProjectReference Include="..\BndzFinder.Shell\BndzFinder.Shell.csproj" />
+    <ProjectReference Include="..\BndzFinder.Theming\BndzFinder.Theming.csproj" />
+  </ItemGroup>
+</Project>

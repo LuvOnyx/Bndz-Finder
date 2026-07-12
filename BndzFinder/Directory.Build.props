@@ -1,0 +1,16 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>13</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Company>Bndz-Finder</Company>
+    <Product>Bndz-Finder</Product>
+    <Copyright>Copyright © Bndz-Finder</Copyright>
+    <Version>0.1.0</Version>
+    <Authors>Bndz-Finder</Authors>
+  </PropertyGroup>
+</Project>
