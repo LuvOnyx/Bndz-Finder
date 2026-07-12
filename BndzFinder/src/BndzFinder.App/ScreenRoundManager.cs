@@ -1,5 +1,5 @@
 using BndzFinder.Core.Services;
-using Microsoft.UI;
+using Windows.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
