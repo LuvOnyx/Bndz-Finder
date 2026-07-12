@@ -30,7 +30,7 @@
                         <DataTemplate>
                             <Button Background="Transparent" BorderThickness="0" Padding="8" Width="96" Height="96">
                                 <StackPanel Spacing="8">
-                                    <FontIcon Glyph="&#xE7C3;" FontSize="48" />
+                                    <Image Source="{Binding IconUri}" Width="48" Height="48" Stretch="Uniform" />
                                     <TextBlock Text="{Binding Name}" FontSize="11" TextAlignment="Center"
                                                TextTrimming="CharacterEllipsis" MaxWidth="80" />
                                 </StackPanel>

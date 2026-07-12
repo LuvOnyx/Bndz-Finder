@@ -129,7 +129,9 @@ public partial class App : Application
             if (settings.Current.FinderEnabled)
             {
                 _finderWindow = new FinderWindow();
-                _finderWindow.ApplyVisibility(false);
+                _finderWindow.InitializePlacement();
+                overlays.SetFinderVisible(true);
+                _finderWindow.ApplyVisibility(true);
             }
 
             _launchpadWindow = new LaunchpadWindow();
@@ -239,6 +241,8 @@ public sealed class DockWindow : ShellOverlayWindow
     {
         Title = "Bndz-Finder Dock";
         _dockVm = App.Services.GetRequiredService<DockViewModel>();
+        _dockVm.UiRefresh = () => Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread()
+            .TryEnqueue(_dockVm.RefreshLayout);
         Content = new DockBarControl { ViewModel = _dockVm };
         ConfigureChrome();
         ApplyBackdrop(_dockVm.Appearance?.Glass);
@@ -261,7 +265,11 @@ public sealed class DockWindow : ShellOverlayWindow
                 ApplyVisibility(_dockVm.IsVisible);
             }
         };
-        _edgeTimer.Tick += (_, _) => UpdateEdgeActivation(_dockVm);
+        _edgeTimer.Tick += (_, _) =>
+        {
+            UpdateEdgeActivation(_dockVm);
+            _dockVm.ApplyHideDelayIfDue();
+        };
         _edgeTimer.Start();
     }
 
@@ -364,6 +372,8 @@ public sealed class DockWindow : ShellOverlayWindow
 
 public sealed class FinderWindow : ShellOverlayWindow
 {
+    private bool _appBarRegistered;
+
     public FinderWindow()
     {
         Title = "Bndz-Finder Finder";
@@ -377,6 +387,34 @@ public sealed class FinderWindow : ShellOverlayWindow
         }
         AppWindow.IsShownInSwitchers = false;
         SystemBackdrop = new DesktopAcrylicBackdrop();
+        Activated += (_, args) =>
+        {
+            if (args.WindowActivationState != WindowActivationState.Deactivated)
+                PositionOnAppBar();
+        };
+    }
+
+    public void InitializePlacement()
+    {
+        _appBarRegistered = true;
+        PositionOnAppBar();
+        ApplyVisibility(true);
+    }
+
+    private void PositionOnAppBar()
+    {
+        if (!_appBarRegistered && AppWindow is null) return;
+        _appBarRegistered = true;
+        var hwnd = WindowNative.GetWindowHandle(this);
+        var appBar = App.Services.GetRequiredService<IAppBarService>();
+        var settings = App.Services.GetRequiredService<ISettingsService>();
+        var size = Math.Max(28, settings.Current.FinderHeight + settings.Current.FinderOffsetY);
+        var rect = appBar.Register(hwnd, AppBarEdge.Top, size);
+        if (rect.Right > rect.Left && rect.Bottom > rect.Top)
+        {
+            AppWindow.MoveAndResize(new RectInt32(
+                rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top));
+        }
     }
 }
 

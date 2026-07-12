@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.UI;
 
 namespace BndzFinder.Finder.Controls;
@@ -72,10 +73,39 @@ public sealed partial class FinderBarControl : UserControl
         TrayIcons.Items.Clear();
         foreach (var icon in ViewModel.TrayIcons)
         {
+            var content = new Grid { Width = 20, Height = 20 };
+            if (icon.IconData is { Length: > 0 })
+            {
+                try
+                {
+                    var temp = Path.Combine(Path.GetTempPath(), "BndzFinder", $"tray-{icon.IconId}.png");
+                    Directory.CreateDirectory(Path.GetDirectoryName(temp)!);
+                    File.WriteAllBytes(temp, icon.IconData);
+                    content.Children.Add(new Image
+                    {
+                        Width = 16,
+                        Height = 16,
+                        Source = new BitmapImage(new Uri(temp))
+                    });
+                }
+                catch
+                {
+                    content.Children.Add(new TextBlock { Text = "•", FontSize = 10 });
+                }
+            }
+            else
+            {
+                content.Children.Add(new TextBlock
+                {
+                    Text = string.IsNullOrWhiteSpace(icon.Tooltip) ? "•" : icon.Tooltip[..Math.Min(2, icon.Tooltip.Length)],
+                    FontSize = 9
+                });
+            }
+
             var button = new Button
             {
                 Style = (Style)Resources["FinderWidgetButton"],
-                Content = new TextBlock { Text = string.IsNullOrWhiteSpace(icon.Tooltip) ? "•" : icon.Tooltip, FontSize = 10 },
+                Content = content,
                 Tag = icon
             };
             button.Click += (_, _) =>

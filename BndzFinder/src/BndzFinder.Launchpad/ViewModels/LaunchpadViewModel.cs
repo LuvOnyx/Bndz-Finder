@@ -1,4 +1,5 @@
 using BndzFinder.Core.Services;
+using BndzFinder.Shell.Icons;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -9,6 +10,7 @@ public partial class LaunchpadViewModel : ObservableObject
     private readonly ISettingsService _settings;
     private readonly AppCatalogService _catalog;
     private readonly IShellOverlayController? _overlays;
+    private readonly IIconPipeline _iconPipeline;
 
     [ObservableProperty] private string _searchQuery = string.Empty;
     [ObservableProperty] private IReadOnlyList<AppCatalogEntry> _allApps = [];
@@ -25,11 +27,13 @@ public partial class LaunchpadViewModel : ObservableObject
     public LaunchpadViewModel(
         ISettingsService settings,
         AppCatalogService? catalog = null,
-        IShellOverlayController? overlays = null)
+        IShellOverlayController? overlays = null,
+        IIconPipeline? iconPipeline = null)
     {
         _settings = settings;
         _catalog = catalog ?? new AppCatalogService();
         _overlays = overlays;
+        _iconPipeline = iconPipeline ?? new MacStyleIconPipeline();
         _ = LoadAsync();
     }
 
@@ -78,7 +82,28 @@ public partial class LaunchpadViewModel : ObservableObject
 
     private async Task LoadAsync()
     {
-        AllApps = await _catalog.LoadAsync(_settings.Current.LaunchpadIconSource).ConfigureAwait(false);
+        var apps = await _catalog.LoadAsync(_settings.Current.LaunchpadIconSource).ConfigureAwait(false);
+        var enriched = new List<AppCatalogEntry>();
+        foreach (var app in apps)
+        {
+            string? iconPath = null;
+            try
+            {
+                var result = await _iconPipeline.ProcessAsync(app.Path).ConfigureAwait(false);
+                iconPath = result.CacheFilePath;
+            }
+            catch { /* skip broken shortcuts */ }
+
+            enriched.Add(new AppCatalogEntry
+            {
+                Id = app.Id,
+                Name = app.Name,
+                Path = app.Path,
+                IconPath = iconPath
+            });
+        }
+
+        AllApps = enriched;
         ApplyFilter();
     }
 
@@ -113,6 +138,9 @@ public sealed class AppCatalogEntry
     public string Name { get; init; } = string.Empty;
     public string Path { get; init; } = string.Empty;
     public string? IconPath { get; init; }
+    public Uri? IconUri => !string.IsNullOrWhiteSpace(IconPath) && File.Exists(IconPath)
+        ? new Uri(IconPath)
+        : null;
 }
 
 public sealed class AppCatalogService

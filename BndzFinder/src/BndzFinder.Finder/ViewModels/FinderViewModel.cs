@@ -103,7 +103,10 @@ public partial class FinderViewModel : ObservableObject
             {
                 Tooltip = s.Tooltip,
                 IconId = s.IconId,
-                OwnerWindow = (nint)s.OwnerWindow
+                OwnerWindow = (nint)s.OwnerWindow,
+                IconData = string.IsNullOrWhiteSpace(s.IconDataBase64)
+                    ? null
+                    : Convert.FromBase64String(s.IconDataBase64)
             })
             .ToList();
     }

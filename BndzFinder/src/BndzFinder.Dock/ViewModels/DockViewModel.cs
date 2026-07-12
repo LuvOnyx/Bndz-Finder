@@ -26,7 +26,14 @@ public partial class DockViewModel : ObservableObject
     private readonly WindowPreviewCoordinator _preview;
     private readonly IShellOverlayController? _overlays;
     private readonly IWindowCaptureService? _capture;
+    private readonly IRunningAppSyncService _runningAppSync;
     private readonly HashSet<string> _runningApps = new(StringComparer.OrdinalIgnoreCase);
+    private readonly System.Timers.Timer _runningAppTimer = new(2000) { AutoReset = true, Enabled = false };
+    private IReadOnlyList<DockItem> _effectiveItems = [];
+    private DateTimeOffset? _hideAfterUtc;
+
+    /// <summary>Set by DockWindow to marshal layout refresh onto the UI thread.</summary>
+    public Action? UiRefresh { get; set; }
 
     [ObservableProperty] private IReadOnlyList<PremiumDockLayoutItem> _layoutItems = [];
     [ObservableProperty] private IReadOnlyList<DockIconViewModel> _iconViewModels = [];
@@ -48,6 +55,9 @@ public partial class DockViewModel : ObservableObject
 
     public IWindowCaptureService? CaptureService => _capture;
 
+    /// <summary>When set, the dock window should hide after this UTC time (hide-delay modes).</summary>
+    public DateTimeOffset? HideAfterUtc => _hideAfterUtc;
+
     public DockViewModel(
         ISettingsService settings,
         IPremiumDockLayoutEngine? layoutEngine = null,
@@ -57,7 +67,8 @@ public partial class DockViewModel : ObservableObject
         BadgePollingService? badges = null,
         ProgressBarMirrorService? progress = null,
         IShellOverlayController? overlays = null,
-        IWindowCaptureService? capture = null)
+        IWindowCaptureService? capture = null,
+        IRunningAppSyncService? runningAppSync = null)
     {
         _settings = settings;
         _layoutEngine = layoutEngine ?? new PremiumDockLayoutEngine();
@@ -69,13 +80,17 @@ public partial class DockViewModel : ObservableObject
         _preview = new WindowPreviewCoordinator(settings.Current.PreviewDelayMs, settings.Current.PreviewSize);
         _overlays = overlays;
         _capture = capture;
+        _runningAppSync = runningAppSync ?? new RunningAppSyncService();
         _preview.PreviewShowRequested += hwnd => PreviewShowRequested?.Invoke(hwnd);
         _preview.PreviewHideRequested += () => PreviewHideRequested?.Invoke();
         _settings.SettingsChanged += (_, _) => RefreshAll();
         _badges.CountsUpdated += (_, e) => BadgeCounts = e.Counts;
         _badges.Start(TimeSpan.FromSeconds(5));
+        _runningAppTimer.Elapsed += (_, _) => RefreshRunningApps();
         SeedDefaultItems();
         RefreshAll();
+        if (OperatingSystem.IsWindows())
+            _runningAppTimer.Start();
     }
 
     partial void OnCursorPositionChanged(double value) => RefreshLayout();
@@ -176,7 +191,20 @@ public partial class DockViewModel : ObservableObject
 
     public void RefreshAll()
     {
+        RefreshRunningApps();
         RefreshAppearance();
+        RefreshLayout();
+        UpdateVisibility();
+        _ = EnsureIconsAsync();
+    }
+
+    private void RefreshRunningApps()
+    {
+        var running = _runningAppSync.GetRunningApps(_settings.Current.DockAppBlacklist);
+        _effectiveItems = _runningAppSync.MergeDockItems(_settings.Current.DockItems, running, out var runningIds);
+        _runningApps.Clear();
+        foreach (var id in runningIds)
+            _runningApps.Add(id);
         RefreshLayout();
         UpdateVisibility();
     }
@@ -189,7 +217,50 @@ public partial class DockViewModel : ObservableObject
 
     private void UpdateVisibility()
     {
-        IsVisible = _behavior.ShouldShowDock(_settings.Current, PointerNearEdge, _runningApps.Count > 0);
+        var shouldShow = _behavior.ShouldShowDock(_settings.Current, PointerNearEdge, _runningApps.Count > 0);
+        if (shouldShow)
+        {
+            _hideAfterUtc = null;
+            IsVisible = true;
+            return;
+        }
+
+        if (_settings.Current.DockDisplayMode is DockDisplayMode.Normal or DockDisplayMode.AlwaysShow)
+        {
+            _hideAfterUtc = null;
+            IsVisible = false;
+            return;
+        }
+
+        _hideAfterUtc = DateTimeOffset.UtcNow.AddMilliseconds(Math.Max(0, _settings.Current.HideDockDelayMs));
+    }
+
+    public void ApplyHideDelayIfDue()
+    {
+        if (_hideAfterUtc is null || DateTimeOffset.UtcNow < _hideAfterUtc) return;
+        _hideAfterUtc = null;
+        IsVisible = false;
+    }
+
+    private async Task EnsureIconsAsync()
+    {
+        foreach (var item in _effectiveItems)
+        {
+            if (item.Kind is DockItemKind.Application or DockItemKind.File)
+            {
+                try { await _iconPipeline.ProcessAsync(item.TargetPath).ConfigureAwait(false); }
+                catch { /* icon extraction can fail for protected paths */ }
+            }
+        }
+
+        foreach (var assetId in new[] { "icon-finder", "icon-launchpad", "icon-calendar", "icon-trash", "icon-weather", "icon-preferences" })
+        {
+            var catalog = new AssetCatalogService();
+            var path = catalog.ResolvePath(assetId);
+            SystemIconFallbackGenerator.EnsureFallback(assetId, path);
+        }
+
+        UiRefresh?.Invoke();
     }
 
     private void RefreshAppearance()
@@ -216,16 +287,17 @@ public partial class DockViewModel : ObservableObject
         if (Appearance is not null)
         {
             DockBarHeight = Appearance.ScaledBaseIconSize + 24 * Appearance.DpiScale;
-            DockBarWidth = Math.Max(400, (s.DockItems.Count * (s.IconSize + s.IconSpace) + 48) * Appearance.DpiScale);
+            DockBarWidth = Math.Max(400, (_effectiveItems.Count * (s.IconSize + s.IconSpace) + 48) * Appearance.DpiScale);
         }
     }
 
     private void RefreshLayout()
     {
         var s = _settings.Current;
+        var items = _effectiveItems.Count > 0 ? _effectiveItems : s.DockItems;
         LayoutItems = _layoutEngine.ComputeLayout(new PremiumDockLayoutRequest
         {
-            Items = s.DockItems,
+            Items = items,
             CursorPosition = CursorPosition,
             BaseIconSize = s.IconSize,
             MaxIconSize = s.IconMaxSize,
@@ -247,7 +319,8 @@ public partial class DockViewModel : ObservableObject
             DisplayName = item.Item.DisplayName ?? Path.GetFileNameWithoutExtension(item.Item.TargetPath),
             LabelOpacity = item.IsHovered ? 1.0 : 0.0,
             BadgeCount = ResolveBadge(item.Item),
-            Progress = _progress.GetProgress(item.Item.TargetPath)
+            Progress = _progress.GetProgress(item.Item.TargetPath),
+            ShowRunningDot = _runningApps.Contains(item.Item.Id)
         }).ToList();
     }
 
@@ -269,7 +342,7 @@ public partial class DockViewModel : ObservableObject
         if (assetId is not null)
         {
             var path = catalog.ResolvePath(assetId);
-            if (File.Exists(path)) return path;
+            return SystemIconFallbackGenerator.EnsureFallback(assetId, path);
         }
         return _iconPipeline.GetCachePath(item.TargetPath);
     }
@@ -318,6 +391,7 @@ public sealed class DockIconViewModel
     public double LabelOpacity { get; init; }
     public int? BadgeCount { get; init; }
     public double Progress { get; init; }
+    public bool ShowRunningDot { get; init; }
     public double RenderSize => Layout?.Size ?? 0;
     public double RenderX => Layout?.X ?? 0;
     public double RenderY => Layout?.Y ?? 0;
@@ -325,5 +399,4 @@ public sealed class DockIconViewModel
     public double SelectRingOpacity => Layout?.SelectGlow ?? 0;
     public double ReflectionOpacity => Layout?.ReflectionOpacity ?? 0;
     public double ShadowOpacity => Layout?.ShadowOpacity ?? 0;
-    public bool ShowRunningDot => Layout is not null && Layout.ShowRunningIndicator && Layout.Item.IsPinned;
 }
