@@ -18,6 +18,7 @@ using BndzFinder.Theming.Customization;
 using BndzFinder.Theming.Glass;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
@@ -53,6 +54,10 @@ public partial class App : Application
     {
         try
         {
+            // WinUI 3 has no Application.OnExit — restore taskbar on dispatcher shutdown.
+            DispatcherQueue.GetForCurrentThread().ShutdownCompleted += (_, _) =>
+                _host?.Services.GetService<ITaskbarLifecycleService>()?.Restore();
+
             _host = Host.CreateDefaultBuilder()
                 .ConfigureServices(ConfigureServices)
                 .Build();
@@ -143,12 +148,6 @@ public partial class App : Application
             _host?.Services.GetService<ITaskbarLifecycleService>()?.Restore();
             StartupErrorReporter.Report(ex);
         }
-    }
-
-    protected override void OnExit(object sender, Microsoft.UI.Xaml.ExitEventArgs args)
-    {
-        Services.GetService<ITaskbarLifecycleService>()?.Restore();
-        base.OnExit(sender, args);
     }
 
     private void UpdateLaunchpad(bool visible)
