@@ -7,6 +7,10 @@
     <RootNamespace>BndzFinder.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Description>Bndz-Finder main WinUI 3 host application.</Description>
+    <!-- Unpackaged WinUI must be self-contained; dotnet run cannot load WinAppSDK native DLLs. -->
+    <SelfContained>true</SelfContained>
+    <PublishTrimmed>false</PublishTrimmed>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" />

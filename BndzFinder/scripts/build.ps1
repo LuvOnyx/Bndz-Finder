@@ -270,9 +270,10 @@ if ($Publish) {
 
 Write-Host "==> Build complete." -ForegroundColor Green
 Write-Host ""
-Write-Host "Dev run (two terminals):" -ForegroundColor Yellow
-Write-Host "  dotnet run --project $Root\src\BndzFinder.ShellHost\BndzFinder.ShellHost.csproj -c $Configuration"
-Write-Host "  dotnet run --project $Root\src\BndzFinder.App\BndzFinder.App.csproj -c $Configuration"
+Write-Host "Dev run (recommended — launches built WinUI exe, not dotnet run):" -ForegroundColor Yellow
+Write-Host "  pwsh -File $(Join-Path (Split-Path -Parent $Root) 'run.ps1')"
 Write-Host ""
-Write-Host "Or one command from repo root:" -ForegroundColor Yellow
-Write-Host "  pwsh -File .\run.ps1"
+Write-Host "Dev run (manual two terminals):" -ForegroundColor Yellow
+Write-Host "  dotnet run --project $Root\src\BndzFinder.ShellHost\BndzFinder.ShellHost.csproj -c $Configuration"
+$appExeHint = Join-Path $Root "src\BndzFinder.App\bin\$Configuration\net10.0-windows10.0.22621.0\win-x64\BndzFinder.App.exe"
+Write-Host "  $appExeHint"

@@ -113,8 +113,8 @@ pwsh -File .\run.ps1
 # Terminal 1
 dotnet run --project src\BndzFinder.ShellHost\BndzFinder.ShellHost.csproj -c Release
 
-# Terminal 2
-dotnet run --project src\BndzFinder.App\BndzFinder.App.csproj -c Release
+# Terminal 2 — run the built exe (NOT dotnet run — WinUI native DLLs fail with 0xC0000135)
+src\BndzFinder.App\bin\Release\net10.0-windows10.0.22621.0\win-x64\BndzFinder.App.exe
 ```
 
 ## Run (portable publish)
@@ -190,3 +190,4 @@ dotnet nuget locals all --clear
 | Build retries on compile errors | `build.ps1` retries **restore only**. `CS9035` used to false-match `503` — fixed. Run `scripts\preflight.ps1` before building. |
 | WinUI build fails | Install Windows App SDK / VS Build Tools with C++ workload |
 | No dock visible | Ensure ShellHost is running; check single-instance lock in `%TEMP%` |
+| App exits `-1073741189` (0xC0000135) | **Do not** `dotnet run` the App. Use `.\run.cmd` or run `BndzFinder.App.exe` from `bin\Release\...\win-x64\`. Delete `bin`/`obj` and rebuild if DLLs are missing. |

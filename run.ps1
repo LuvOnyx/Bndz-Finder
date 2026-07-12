@@ -62,8 +62,27 @@ if ($Publish) {
 
 Invoke-BndzScript $BuildScript @{ Configuration = $Configuration; SkipTests = $true }
 
+$Helpers = Join-Path $ProjectRoot 'scripts\RunHelpers.psm1'
+if (Test-Path $Helpers) { Import-Module $Helpers -Force }
+
 $ShellHostProj = Join-Path $ProjectRoot 'src\BndzFinder.ShellHost\BndzFinder.ShellHost.csproj'
 $AppProj = Join-Path $ProjectRoot 'src\BndzFinder.App\BndzFinder.App.csproj'
+
+$AppExeItem = Get-BndzAppExe -ProjectRoot $ProjectRoot -Configuration $Configuration
+if ($null -eq $AppExeItem) {
+    Write-Error "BndzFinder.App.exe not found after build. Expected under src\BndzFinder.App\bin\$Configuration\...\win-x64\"
+}
+$AppExe = $AppExeItem.FullName
+
+$missingDlls = Test-BndzWinUiRuntime -ExePath $AppExe
+if ($missingDlls.Count -gt 0) {
+    Write-Host ""
+    Write-Host "WARNING: WinUI runtime DLLs missing next to the App exe:" -ForegroundColor Yellow
+    Write-Host "  $($missingDlls -join ', ')" -ForegroundColor Yellow
+    Write-Host "  Folder: $(Split-Path -Parent $AppExe)" -ForegroundColor DarkGray
+    Write-Host "  Rebuild with: pwsh -File '$BuildScript' -Configuration $Configuration" -ForegroundColor Yellow
+    Write-Host ""
+}
 
 Write-Host ""
 Write-Host "Starting ShellHost (minimize hooks, hotkeys, tray)..." -ForegroundColor Cyan
@@ -75,11 +94,12 @@ $hostJob = Start-Process pwsh -ArgumentList @(
 Start-Sleep -Seconds 3
 
 Write-Host "Starting Bndz-Finder App (dock UI)..." -ForegroundColor Cyan
+Write-Host "  $AppExe" -ForegroundColor DarkGray
 Write-Host "Close both terminal windows to exit." -ForegroundColor Yellow
 Write-Host "If nothing appears, check %LOCALAPPDATA%\BndzFinder\startup.log" -ForegroundColor DarkGray
-Push-Location $ProjectRoot
+Push-Location (Split-Path -Parent $AppExe)
 try {
-    dotnet run --project $AppProj -c $Configuration
+    & $AppExe
     $appExit = $LASTEXITCODE
 }
 finally {
@@ -89,7 +109,7 @@ finally {
 if ($appExit -ne 0) {
     Write-Host ""
     Write-Host "Bndz-Finder App exited with code $appExit." -ForegroundColor Red
-    Write-Host "Common causes: another instance running, or a missing dependency." -ForegroundColor Red
+    Write-Host (Format-BndzExitCodeHint -ExitCode $appExit) -ForegroundColor Red
     Write-Host "Log: $env:LOCALAPPDATA\BndzFinder\startup.log" -ForegroundColor Yellow
 }
 
