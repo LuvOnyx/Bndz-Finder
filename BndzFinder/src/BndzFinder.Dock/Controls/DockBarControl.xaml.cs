@@ -1,3 +1,4 @@
+using BndzFinder.Core.Models;
 using BndzFinder.Dock.Helpers;
 using BndzFinder.Dock.ViewModels;
 using BndzFinder.Theming.Glass;

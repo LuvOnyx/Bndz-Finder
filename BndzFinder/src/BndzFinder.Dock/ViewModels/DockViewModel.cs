@@ -315,7 +315,6 @@ public partial class DockViewModel : ObservableObject
             _ = System.Diagnostics.Process.Start("explorer", path);
     }
 
-    [RelayCommand]
     public async Task ReorderItemAsync(int fromIndex, int toIndex)
     {
         if (_settings.Current.LockIcons || fromIndex == toIndex) return;
