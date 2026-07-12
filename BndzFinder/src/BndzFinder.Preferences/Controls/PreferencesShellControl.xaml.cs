@@ -97,19 +97,19 @@ public sealed partial class PreferencesShellControl : UserControl
         ViewModel.Settings.DockOpacity = DockOpacitySlider.Value / 100;
         ViewModel.Settings.DockCornerRadius = CornerRadiusSlider.Value;
         ViewModel.SetGlassTintCommand.Execute(GlassTintPicker.SelectedHex);
-        ViewModel.SetWidgetEnabledCommand.Execute(("cpu", WidgetCpu.IsOn));
-        ViewModel.SetWidgetEnabledCommand.Execute(("gpu", WidgetGpu.IsOn));
-        ViewModel.SetWidgetEnabledCommand.Execute(("memory", WidgetMemory.IsOn));
-        ViewModel.SetWidgetEnabledCommand.Execute(("disk", WidgetDisk.IsOn));
-        ViewModel.SetWidgetEnabledCommand.Execute(("network", WidgetNetwork.IsOn));
-        ViewModel.SetWidgetEnabledCommand.Execute(("battery", WidgetBattery.IsOn));
-        ViewModel.SetWidgetEnabledCommand.Execute(("weather", WidgetWeather.IsOn));
-        ViewModel.SetWidgetEnabledCommand.Execute(("audio", WidgetAudio.IsOn));
-        ViewModel.SetWidgetEnabledCommand.Execute(("bluetooth", WidgetBluetooth.IsOn));
-        ViewModel.SetWidgetEnabledCommand.Execute(("display", WidgetDisplay.IsOn));
-        ViewModel.SetWidgetEnabledCommand.Execute(("keyboard", WidgetKeyboard.IsOn));
-        ViewModel.SetWidgetEnabledCommand.Execute(("media", WidgetMedia.IsOn));
-        ViewModel.SetWidgetEnabledCommand.Execute(("notifications", WidgetNotifications.IsOn));
+        ViewModel.SetWidgetEnabled("cpu", WidgetCpu.IsOn);
+        ViewModel.SetWidgetEnabled("gpu", WidgetGpu.IsOn);
+        ViewModel.SetWidgetEnabled("memory", WidgetMemory.IsOn);
+        ViewModel.SetWidgetEnabled("disk", WidgetDisk.IsOn);
+        ViewModel.SetWidgetEnabled("network", WidgetNetwork.IsOn);
+        ViewModel.SetWidgetEnabled("battery", WidgetBattery.IsOn);
+        ViewModel.SetWidgetEnabled("weather", WidgetWeather.IsOn);
+        ViewModel.SetWidgetEnabled("audio", WidgetAudio.IsOn);
+        ViewModel.SetWidgetEnabled("bluetooth", WidgetBluetooth.IsOn);
+        ViewModel.SetWidgetEnabled("display", WidgetDisplay.IsOn);
+        ViewModel.SetWidgetEnabled("keyboard", WidgetKeyboard.IsOn);
+        ViewModel.SetWidgetEnabled("media", WidgetMedia.IsOn);
+        ViewModel.SetWidgetEnabled("notifications", WidgetNotifications.IsOn);
         await ViewModel.SaveCommand.ExecuteAsync(null);
     }
 

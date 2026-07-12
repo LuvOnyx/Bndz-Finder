@@ -80,7 +80,6 @@ public partial class PreferencesViewModel : ObservableObject
     [RelayCommand]
     public void SetMinimizeEffect(MinimizeEffect effect) => Settings.MinimizeEffect = effect;
 
-    [RelayCommand]
     public void SetWidgetEnabled(string widget, bool enabled)
     {
         switch (widget)
