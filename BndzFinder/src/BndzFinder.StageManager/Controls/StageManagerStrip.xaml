@@ -7,24 +7,7 @@
             Background="#B01A1A1A" BorderBrush="#20FFFFFF" BorderThickness="1"
             VerticalAlignment="Center" HorizontalAlignment="Left" Margin="8,0,0,0">
         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-            <ItemsControl x:Name="WindowThumbnails">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal" Spacing="8" />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Button Width="120" Height="80" Padding="0" CornerRadius="8"
-                                Background="#40282828" BorderBrush="#30FFFFFF" BorderThickness="1">
-                            <Grid>
-                                <TextBlock Text="{Binding Title}" FontSize="10" Margin="6"
-                                           VerticalAlignment="Bottom" TextTrimming="CharacterEllipsis" />
-                            </Grid>
-                        </Button>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <StackPanel x:Name="WindowThumbnails" Orientation="Horizontal" Spacing="8" />
         </ScrollViewer>
     </Border>
 </UserControl>

@@ -55,6 +55,8 @@ internal sealed class ShellHostWorker : BackgroundService
     private readonly IHotkeySyncService _hotkeySync;
     private readonly IHotCornerMonitor _hotCorners;
     private readonly IKeyboardInterceptService _keyboard;
+    private ShellHostHotkeyRegistrar? _hotkeyRegistrar;
+    private CancellationToken _workerToken;
 
     public ShellHostWorker(
         ILogger<ShellHostWorker> logger,
@@ -90,6 +92,7 @@ internal sealed class ShellHostWorker : BackgroundService
     {
         _logger.LogInformation("BndzFinder.ShellHost starting.");
         await _settings.LoadAsync(stoppingToken).ConfigureAwait(false);
+        _workerToken = stoppingToken;
         _server.MessageReceived += OnMessageReceived;
         _ = _server.RunAsync(stoppingToken);
 
@@ -100,12 +103,8 @@ internal sealed class ShellHostWorker : BackgroundService
         _winEvents.WindowMinimized += (_, _) => _ = BroadcastWindowListAsync(stoppingToken);
 
         _minimizeHook.Start(OnWindowMinimized);
-        _hotkeySync.ApplyFromSettings(_settings.Current, new ShellHostHotkeyRegistrar(_hotkeys, _server, _logger));
-        _hotCorners.Start((action, entered) =>
-        {
-            if (entered)
-                _ = _server.BroadcastAsync(new ShellHostMessage { Type = ShellHostMessageType.HotkeyPressed, Payload = $"corner:{action}" }, stoppingToken);
-        });
+        _hotkeyRegistrar = new ShellHostHotkeyRegistrar(_hotkeys, _server, _logger);
+        ApplyRuntimeSettings();
         _keyboard.Start(vk => { _ = OnKeyboardMinimizeAsync(stoppingToken); });
 
         await BroadcastTrayIconsAsync(stoppingToken).ConfigureAwait(false);
@@ -124,10 +123,31 @@ internal sealed class ShellHostWorker : BackgroundService
         _globalHotkeys.Dispose();
     }
 
+    private void ApplyRuntimeSettings()
+    {
+        if (_hotkeyRegistrar is null) return;
+        _hotCorners.Stop();
+        _hotCorners.Start(_settings.Current.HotCorners, (action, entered) =>
+        {
+            if (entered)
+                _ = _server.BroadcastAsync(new ShellHostMessage
+                {
+                    Type = ShellHostMessageType.HotkeyPressed,
+                    Payload = $"corner:{action}"
+                }, _workerToken);
+        });
+        _hotkeySync.ApplyFromSettings(_settings.Current, _hotkeyRegistrar);
+    }
+
     private async Task BroadcastTrayIconsAsync(CancellationToken ct)
     {
         var icons = _trayMirror.GetVisibleTrayIcons();
-        var payload = JsonSerializer.Serialize(icons.Select(i => new { i.Tooltip, i.IconId }));
+        var payload = JsonSerializer.Serialize(icons.Select(i => new
+        {
+            i.Tooltip,
+            i.IconId,
+            OwnerWindow = i.OwnerWindow.ToInt64()
+        }));
         await _server.BroadcastAsync(new ShellHostMessage
         {
             Type = ShellHostMessageType.TrayIconsUpdated,
@@ -160,7 +180,17 @@ internal sealed class ShellHostWorker : BackgroundService
             case ShellHostMessageType.Shutdown:
                 _logger.LogInformation("Shutdown requested.");
                 break;
+            case ShellHostMessageType.SettingsReload:
+                _ = ReloadSettingsAsync();
+                break;
         }
+    }
+
+    private async Task ReloadSettingsAsync()
+    {
+        await _settings.LoadAsync().ConfigureAwait(false);
+        ApplyRuntimeSettings();
+        _logger.LogDebug("ShellHost settings reloaded from {Path}", _settings.SettingsPath);
     }
 
     private void OnWindowMinimized(nint hwnd) =>

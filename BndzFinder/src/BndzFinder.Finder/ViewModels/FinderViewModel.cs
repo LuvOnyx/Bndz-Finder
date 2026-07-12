@@ -13,6 +13,7 @@ public partial class FinderViewModel : ObservableObject
     private readonly ISystemMetricsService _metrics;
     private readonly ITrayMirrorFacade _trayMirror;
     private readonly WeatherService _weather;
+    private bool _traySyncedFromIpc;
 
     [ObservableProperty] private double _cpuUsage;
     [ObservableProperty] private double _memoryUsage;
@@ -68,8 +69,11 @@ public partial class FinderViewModel : ObservableObject
     public void OpenControlCenter(string panel) => ControlCenterRequested?.Invoke(panel);
 
     public event Action<string>? ControlCenterRequested;
+    public event Action? PreferencesRequested;
 
-    private void NotifyWidgetVisibility()
+    public void OpenPreferences() => PreferencesRequested?.Invoke();
+
+    public void NotifyWidgetVisibility()
     {
         OnPropertyChanged(nameof(ShowCpu));
         OnPropertyChanged(nameof(ShowGpu));
@@ -91,6 +95,19 @@ public partial class FinderViewModel : ObservableObject
     [RelayCommand]
     public void ClickTrayIcon(TrayProxyItem item) => _trayMirror.ForwardClick(item);
 
+    public void ApplyTrayIconsFromPayload(string json)
+    {
+        _traySyncedFromIpc = true;
+        TrayIcons = ShellIpcParsers.ParseTrayIcons(json)
+            .Select(s => new TrayProxyItem
+            {
+                Tooltip = s.Tooltip,
+                IconId = s.IconId,
+                OwnerWindow = (nint)s.OwnerWindow
+            })
+            .ToList();
+    }
+
     private async Task StartPollingAsync()
     {
         while (true)
@@ -107,7 +124,8 @@ public partial class FinderViewModel : ObservableObject
                 ClockText = DateTime.Now.ToString(_settings.Current.TimeFormat);
                 DateText = DateTime.Now.ToString(_settings.Current.DateFormat);
                 WeatherText = _settings.Current.ShowWeather ? _weather.GetCurrentCondition() : "—";
-                TrayIcons = await _trayMirror.GetIconsAsync().ConfigureAwait(false);
+                if (!_traySyncedFromIpc)
+                    TrayIcons = await _trayMirror.GetIconsAsync().ConfigureAwait(false);
             }
             catch
             {

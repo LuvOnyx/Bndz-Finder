@@ -48,6 +48,18 @@
                         <ComboBox x:Name="FinderMonitorBox" Header="Finder monitor" Width="280" />
                     </StackPanel>
 
+                    <StackPanel x:Name="LookAndBehaviorSection" Spacing="12" Visibility="Collapsed">
+                        <ToggleSwitch x:Name="HideTaskbarToggle" Header="Hide Windows taskbar when dock is shown" />
+                        <ToggleSwitch x:Name="HideTaskbarAllMonitorsToggle" Header="Hide taskbar on all monitors" />
+                        <ToggleSwitch x:Name="AutoHideTaskbarToggle" Header="Auto-hide taskbar at startup" />
+                        <ToggleSwitch x:Name="PreviewOnToggle" Header="Show window preview on dock hover" />
+                        <Slider x:Name="PreviewSizeSlider" Header="Preview size" Minimum="120" Maximum="400" />
+                        <Slider x:Name="PreviewDelaySlider" Header="Preview delay (ms)" Minimum="0" Maximum="1200" />
+                        <Slider x:Name="HideDockDelaySlider" Header="Hide dock delay (ms)" Minimum="0" Maximum="2000" />
+                        <ToggleSwitch x:Name="LockIconsToggle" Header="Lock dock icons from reorder" />
+                        <ToggleSwitch x:Name="EdgeActivationToggle" Header="Show dock when pointer nears screen edge" />
+                    </StackPanel>
+
                     <StackPanel x:Name="WidgetsSection" Spacing="8" Visibility="Collapsed">
                         <TextBlock Text="Optional menu bar widgets — enable only what you want." TextWrapping="WrapWholeWords" Opacity="0.8" />
                         <ToggleSwitch x:Name="WidgetCpu" Header="CPU usage" />
@@ -67,6 +79,19 @@
 
                     <StackPanel x:Name="LaunchpadSection" Spacing="12" Visibility="Collapsed">
                         <TextBlock Text="Launchpad opens as an overlay via hotkey — not forced at startup." TextWrapping="WrapWholeWords" Opacity="0.8" />
+                        <Slider x:Name="LaunchpadIconSizeSlider" Header="Icon size" Minimum="48" Maximum="128" />
+                        <ToggleSwitch x:Name="LaunchpadHideLabelsToggle" Header="Hide app labels" />
+                        <ComboBox x:Name="LaunchpadSourceBox" Header="App catalog source" Width="280" />
+                    </StackPanel>
+
+                    <StackPanel x:Name="AudioDisplayNetworkSection" Spacing="12" Visibility="Collapsed">
+                        <TextBlock Text="Quick settings panels opened from Finder widgets." TextWrapping="WrapWholeWords" Opacity="0.8" />
+                        <ToggleSwitch x:Name="AudioPanelToggle" Header="Sound / volume panel" />
+                        <ToggleSwitch x:Name="DisplayPanelToggle" Header="Display / brightness panel" />
+                        <ToggleSwitch x:Name="NetworkPanelToggle" Header="Network status widget" />
+                        <ToggleSwitch x:Name="MicrophonePanelToggle" Header="Microphone widget" />
+                        <Slider x:Name="TrayWaitSlider" Header="Tray icon poll interval (ms)" Minimum="250" Maximum="3000" />
+                        <ToggleSwitch x:Name="AlwaysShowTrayToggle" Header="Always show all tray icons" />
                     </StackPanel>
 
                     <StackPanel x:Name="WindowAnimationsSection" Spacing="12" Visibility="Collapsed">
@@ -75,10 +100,18 @@
                     </StackPanel>
 
                     <StackPanel x:Name="AdvancedSection" Spacing="12" Visibility="Collapsed">
+                        <TextBlock Text="Dock hotkey" />
+                        <TextBox x:Name="DockHotkeyBox" Width="280" IsReadOnly="True" />
+                        <TextBlock Text="Finder hotkey" />
+                        <TextBox x:Name="FinderHotkeyBox" Width="280" IsReadOnly="True" />
                         <TextBlock Text="Launchpad hotkey" />
                         <TextBox x:Name="LaunchpadHotkeyBox" Width="280" IsReadOnly="True" />
                         <TextBlock Text="Stage Manager hotkey" />
                         <TextBox x:Name="StageManagerHotkeyBox" Width="280" IsReadOnly="True" />
+                        <TextBlock Text="Bottom-left hot corner" />
+                        <ComboBox x:Name="HotCornerLeftBox" Width="280" />
+                        <TextBlock Text="Bottom-right hot corner" />
+                        <ComboBox x:Name="HotCornerRightBox" Width="280" />
                     </StackPanel>
 
                     <StackPanel x:Name="ThemesSection" Spacing="12" Visibility="Collapsed">

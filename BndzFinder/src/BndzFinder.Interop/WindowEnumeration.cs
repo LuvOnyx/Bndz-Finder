@@ -5,9 +5,11 @@ namespace BndzFinder.Interop;
 
 public sealed class WindowThumbnailItem
 {
-    public required nint Hwnd { get; init; }
-    public required string Title { get; init; }
+    public nint Hwnd { get; init; }
+    public string Title { get; init; } = string.Empty;
     public byte[]? Thumbnail { get; init; }
+    public int ThumbnailWidth { get; init; }
+    public int ThumbnailHeight { get; init; }
 }
 
 public static class WindowEnumerationService
@@ -29,6 +31,42 @@ public static class WindowEnumerationService
         }, nint.Zero);
 
         return results;
+    }
+
+    public static nint FindMainWindowForExecutable(string targetPath)
+    {
+        if (!OperatingSystem.IsWindows() || string.IsNullOrWhiteSpace(targetPath)) return nint.Zero;
+
+        var targetName = Path.GetFileNameWithoutExtension(targetPath);
+        nint found = nint.Zero;
+
+        EnumWindows((hwnd, _) =>
+        {
+            if (!IsEligibleWindow(hwnd)) return true;
+            if (!TryGetProcessName(hwnd, out var processName)) return true;
+            if (!processName.Equals(targetName, StringComparison.OrdinalIgnoreCase)) return true;
+            found = hwnd;
+            return false;
+        }, nint.Zero);
+
+        return found;
+    }
+
+    private static bool TryGetProcessName(nint hwnd, out string processName)
+    {
+        processName = string.Empty;
+        _ = GetWindowThreadProcessId(hwnd, out var pid);
+        if (pid == 0) return false;
+        try
+        {
+            using var process = System.Diagnostics.Process.GetProcessById((int)pid);
+            processName = process.ProcessName;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static bool IsEligibleWindow(nint hwnd)
@@ -69,4 +107,7 @@ public static class WindowEnumerationService
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern int GetWindowTextLength(nint hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(nint hWnd, out uint lpdwProcessId);
 }

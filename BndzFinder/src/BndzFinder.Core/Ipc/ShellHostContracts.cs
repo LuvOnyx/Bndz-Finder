@@ -11,6 +11,7 @@ public enum ShellHostMessageType : byte
     TrayIconsUpdated = 20,
     HotkeyPressed = 30,
     WindowListUpdated = 40,
+    SettingsReload = 50,
     Shutdown = 255
 }
 

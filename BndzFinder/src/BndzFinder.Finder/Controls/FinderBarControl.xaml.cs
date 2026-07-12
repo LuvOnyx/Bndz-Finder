@@ -69,7 +69,22 @@ public sealed partial class FinderBarControl : UserControl
         KeyboardText.Text = ViewModel.KeyboardLayout;
         ClockText.Text = ViewModel.ClockText;
         DateText.Text = ViewModel.DateText;
-        TrayIcons.ItemsSource = ViewModel.TrayIcons;
+        TrayIcons.Items.Clear();
+        foreach (var icon in ViewModel.TrayIcons)
+        {
+            var button = new Button
+            {
+                Style = (Style)Resources["FinderWidgetButton"],
+                Content = new TextBlock { Text = string.IsNullOrWhiteSpace(icon.Tooltip) ? "•" : icon.Tooltip, FontSize = 10 },
+                Tag = icon
+            };
+            button.Click += (_, _) =>
+            {
+                if (button.Tag is TrayProxyItem item)
+                    ViewModel?.ClickTrayIconCommand.Execute(item);
+            };
+            TrayIcons.Items.Add(button);
+        }
     }
 
     private void ShowControlCenter(string panel, FrameworkElement anchor)
@@ -84,4 +99,6 @@ public sealed partial class FinderBarControl : UserControl
     private void OnDisplayClick(object sender, RoutedEventArgs e) => ShowControlCenter("display", DisplayWidget);
     private void OnCpuClick(object sender, RoutedEventArgs e) => ViewModel?.OpenControlCenter("cpu");
     private void OnCalendarClick(object sender, RoutedEventArgs e) => ViewModel?.OpenControlCenter("calendar");
+
+    private void OnPreferencesClick(object sender, RoutedEventArgs e) => ViewModel?.OpenPreferences();
 }

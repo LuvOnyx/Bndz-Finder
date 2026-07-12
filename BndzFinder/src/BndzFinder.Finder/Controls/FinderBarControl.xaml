@@ -28,7 +28,9 @@
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <FontIcon Glyph="&#xE80F;" FontSize="12" Foreground="#CCFFFFFF" />
-                    <TextBlock x:Name="AppTitle" Text="Bndz-Finder" FontSize="12" Foreground="#CCFFFFFF" VerticalAlignment="Center" />
+                    <Button x:Name="AppTitleButton" Background="Transparent" BorderThickness="0" Padding="0" Click="OnPreferencesClick">
+                        <TextBlock x:Name="AppTitle" Text="Bndz-Finder" FontSize="12" Foreground="#CCFFFFFF" VerticalAlignment="Center" />
+                    </Button>
                 </StackPanel>
 
                 <Border Grid.Column="1" />

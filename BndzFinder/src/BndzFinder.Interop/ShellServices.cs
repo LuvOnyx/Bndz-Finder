@@ -128,7 +128,7 @@ public sealed class HotkeyBindingService : IHotkeyBindingService, IHotkeyBinding
 
 public interface IHotCornerMonitor
 {
-    void Start(Action<HotCornerAction, bool> onTriggered);
+    void Start(HotCornerBinding corners, Action<HotCornerAction, bool> onTriggered);
     void Stop();
 }
 
@@ -136,10 +136,10 @@ public sealed class HotCornerMonitor : IHotCornerMonitor, IDisposable
 {
     private CancellationTokenSource? _cts;
 
-    public void Start(Action<HotCornerAction, bool> onTriggered)
+    public void Start(HotCornerBinding corners, Action<HotCornerAction, bool> onTriggered)
     {
         _cts = new CancellationTokenSource();
-        _ = MonitorAsync(onTriggered, _cts.Token);
+        _ = MonitorAsync(corners, onTriggered, _cts.Token);
     }
 
     public void Stop()
@@ -148,7 +148,7 @@ public sealed class HotCornerMonitor : IHotCornerMonitor, IDisposable
         _cts = null;
     }
 
-    private static async Task MonitorAsync(Action<HotCornerAction, bool> onTriggered, CancellationToken ct)
+    private static async Task MonitorAsync(HotCornerBinding corners, Action<HotCornerAction, bool> onTriggered, CancellationToken ct)
     {
         var cornerSize = 8;
         var active = new HashSet<HotCornerAction>();
@@ -161,13 +161,13 @@ public sealed class HotCornerMonitor : IHotCornerMonitor, IDisposable
                 {
                     var screenWidth = GetSystemMetrics(0);
                     var screenHeight = GetSystemMetrics(1);
-                    var corners = new (HotCornerAction Action, bool Hit)[]
-                    {
-                        (HotCornerAction.Launchpad, point.X <= cornerSize && point.Y >= screenHeight - cornerSize),
-                        (HotCornerAction.StageManager, point.X >= screenWidth - cornerSize && point.Y >= screenHeight - cornerSize)
-                    };
+                    var hits = new List<(HotCornerAction Action, bool Hit)>();
+                    if (corners.BottomLeft is not HotCornerAction.None and var leftAction)
+                        hits.Add((leftAction, point.X <= cornerSize && point.Y >= screenHeight - cornerSize));
+                    if (corners.BottomRight is not HotCornerAction.None and var rightAction)
+                        hits.Add((rightAction, point.X >= screenWidth - cornerSize && point.Y >= screenHeight - cornerSize));
 
-                    foreach (var (action, hit) in corners)
+                    foreach (var (action, hit) in hits)
                     {
                         if (hit && active.Add(action))
                             onTriggered(action, true);

@@ -1,0 +1,46 @@
+using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.Storage.Streams;
+
+namespace BndzFinder.StageManager.Helpers;
+
+public static class ThumbnailBitmapHelper
+{
+    public static WriteableBitmap? CreateFromBgra(byte[]? pixels, int width, int height, int maxSize)
+    {
+        if (pixels is null || width <= 0 || height <= 0 || pixels.Length < width * height * 4)
+            return null;
+
+        var scale = Math.Min(1.0, maxSize / (double)Math.Max(width, height));
+        var targetWidth = Math.Max(1, (int)(width * scale));
+        var targetHeight = Math.Max(1, (int)(height * scale));
+        var scaled = scale < 0.999
+            ? DownscaleBgra(pixels, width, height, targetWidth, targetHeight)
+            : pixels;
+
+        var bitmap = new WriteableBitmap(targetWidth, targetHeight);
+        using var stream = bitmap.PixelBuffer.AsStream();
+        stream.Write(scaled, 0, targetWidth * targetHeight * 4);
+        bitmap.Invalidate();
+        return bitmap;
+    }
+
+    private static byte[] DownscaleBgra(byte[] source, int srcW, int srcH, int dstW, int dstH)
+    {
+        var result = new byte[dstW * dstH * 4];
+        for (var y = 0; y < dstH; y++)
+        {
+            var srcY = y * srcH / dstH;
+            for (var x = 0; x < dstW; x++)
+            {
+                var srcX = x * srcW / dstW;
+                var srcIndex = (srcY * srcW + srcX) * 4;
+                var dstIndex = (y * dstW + x) * 4;
+                result[dstIndex] = source[srcIndex];
+                result[dstIndex + 1] = source[srcIndex + 1];
+                result[dstIndex + 2] = source[srcIndex + 2];
+                result[dstIndex + 3] = source[srcIndex + 3];
+            }
+        }
+        return result;
+    }
+}

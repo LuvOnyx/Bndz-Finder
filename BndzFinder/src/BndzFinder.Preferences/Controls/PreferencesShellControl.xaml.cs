@@ -46,8 +46,33 @@ public sealed partial class PreferencesShellControl : UserControl
         DockOpacitySlider.Value = ViewModel.Settings.DockOpacity * 100;
         CornerRadiusSlider.Value = ViewModel.Settings.DockCornerRadius;
         BindWidgetToggles();
+        DockHotkeyBox.Text = FormatHotkey(ViewModel.Settings.DockHotkey);
+        FinderHotkeyBox.Text = FormatHotkey(ViewModel.Settings.FinderHotkey);
         LaunchpadHotkeyBox.Text = FormatHotkey(ViewModel.Settings.LaunchpadHotkey);
         StageManagerHotkeyBox.Text = FormatHotkey(ViewModel.Settings.StageManagerHotkey);
+        HotCornerLeftBox.ItemsSource = Enum.GetValues<HotCornerAction>();
+        HotCornerRightBox.ItemsSource = Enum.GetValues<HotCornerAction>();
+        HotCornerLeftBox.SelectedItem = ViewModel.Settings.HotCorners.BottomLeft;
+        HotCornerRightBox.SelectedItem = ViewModel.Settings.HotCorners.BottomRight;
+        HideTaskbarToggle.IsOn = ViewModel.Settings.HideTaskbarWhenDockShown;
+        HideTaskbarAllMonitorsToggle.IsOn = ViewModel.Settings.HideTaskbarAllMonitors;
+        AutoHideTaskbarToggle.IsOn = ViewModel.Settings.AutoHideTaskbarAtStartup;
+        PreviewOnToggle.IsOn = ViewModel.Settings.PreviewOn;
+        PreviewSizeSlider.Value = ViewModel.Settings.PreviewSize;
+        PreviewDelaySlider.Value = ViewModel.Settings.PreviewDelayMs;
+        HideDockDelaySlider.Value = ViewModel.Settings.HideDockDelayMs;
+        LockIconsToggle.IsOn = ViewModel.Settings.LockIcons;
+        EdgeActivationToggle.IsOn = ViewModel.Settings.ShowDockActivationMouse;
+        LaunchpadIconSizeSlider.Value = ViewModel.Settings.LaunchpadIconSize;
+        LaunchpadHideLabelsToggle.IsOn = ViewModel.Settings.LaunchpadHideLabels;
+        LaunchpadSourceBox.ItemsSource = new[] { "startmenu", "desktop", "both" };
+        LaunchpadSourceBox.SelectedItem = ViewModel.Settings.LaunchpadIconSource;
+        AudioPanelToggle.IsOn = ViewModel.Settings.ShowAudio;
+        DisplayPanelToggle.IsOn = ViewModel.Settings.ShowDisplay;
+        NetworkPanelToggle.IsOn = ViewModel.Settings.ShowNetwork;
+        MicrophonePanelToggle.IsOn = ViewModel.Settings.ShowMicrophone;
+        TrayWaitSlider.Value = ViewModel.Settings.TrayIconWaitTimeMs;
+        AlwaysShowTrayToggle.IsOn = ViewModel.Settings.AlwaysShowAllTrayIcons;
     }
 
     private void BindWidgetToggles()
@@ -74,8 +99,10 @@ public sealed partial class PreferencesShellControl : UserControl
         GeneralSection.Visibility = tag == "General" ? Visibility.Visible : Visibility.Collapsed;
         AppearanceSection.Visibility = tag == "Appearance" ? Visibility.Visible : Visibility.Collapsed;
         ScreenSection.Visibility = tag == "Screen" ? Visibility.Visible : Visibility.Collapsed;
+        LookAndBehaviorSection.Visibility = tag == "LookAndBehavior" ? Visibility.Visible : Visibility.Collapsed;
         WidgetsSection.Visibility = tag == "SystemIconTray" ? Visibility.Visible : Visibility.Collapsed;
         LaunchpadSection.Visibility = tag == "Launchpad" ? Visibility.Visible : Visibility.Collapsed;
+        AudioDisplayNetworkSection.Visibility = tag == "AudioDisplayNetwork" ? Visibility.Visible : Visibility.Collapsed;
         WindowAnimationsSection.Visibility = tag == "WindowAnimations" ? Visibility.Visible : Visibility.Collapsed;
         AdvancedSection.Visibility = tag == "Advanced" ? Visibility.Visible : Visibility.Collapsed;
         ThemesSection.Visibility = tag == "Themes" ? Visibility.Visible : Visibility.Collapsed;
@@ -110,6 +137,26 @@ public sealed partial class PreferencesShellControl : UserControl
         ViewModel.SetWidgetEnabled("keyboard", WidgetKeyboard.IsOn);
         ViewModel.SetWidgetEnabled("media", WidgetMedia.IsOn);
         ViewModel.SetWidgetEnabled("notifications", WidgetNotifications.IsOn);
+        ViewModel.Settings.HideTaskbarWhenDockShown = HideTaskbarToggle.IsOn;
+        ViewModel.Settings.HideTaskbarAllMonitors = HideTaskbarAllMonitorsToggle.IsOn;
+        ViewModel.Settings.AutoHideTaskbarAtStartup = AutoHideTaskbarToggle.IsOn;
+        ViewModel.Settings.PreviewOn = PreviewOnToggle.IsOn;
+        ViewModel.Settings.PreviewSize = (int)PreviewSizeSlider.Value;
+        ViewModel.Settings.PreviewDelayMs = (int)PreviewDelaySlider.Value;
+        ViewModel.Settings.HideDockDelayMs = (int)HideDockDelaySlider.Value;
+        ViewModel.Settings.LockIcons = LockIconsToggle.IsOn;
+        ViewModel.Settings.ShowDockActivationMouse = EdgeActivationToggle.IsOn;
+        ViewModel.Settings.LaunchpadIconSize = (int)LaunchpadIconSizeSlider.Value;
+        ViewModel.Settings.LaunchpadHideLabels = LaunchpadHideLabelsToggle.IsOn;
+        if (LaunchpadSourceBox.SelectedItem is string source) ViewModel.Settings.LaunchpadIconSource = source;
+        ViewModel.Settings.ShowAudio = AudioPanelToggle.IsOn;
+        ViewModel.Settings.ShowDisplay = DisplayPanelToggle.IsOn;
+        ViewModel.Settings.ShowNetwork = NetworkPanelToggle.IsOn;
+        ViewModel.Settings.ShowMicrophone = MicrophonePanelToggle.IsOn;
+        ViewModel.Settings.TrayIconWaitTimeMs = (int)TrayWaitSlider.Value;
+        ViewModel.Settings.AlwaysShowAllTrayIcons = AlwaysShowTrayToggle.IsOn;
+        if (HotCornerLeftBox.SelectedItem is HotCornerAction left) ViewModel.Settings.HotCorners.BottomLeft = left;
+        if (HotCornerRightBox.SelectedItem is HotCornerAction right) ViewModel.Settings.HotCorners.BottomRight = right;
         await ViewModel.SaveCommand.ExecuteAsync(null);
     }
 

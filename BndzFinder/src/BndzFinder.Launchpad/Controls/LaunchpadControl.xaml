@@ -12,6 +12,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <TextBox x:Name="SearchBox" Grid.Row="0" PlaceholderText="Search"
@@ -38,6 +39,12 @@
                     </GridView.ItemTemplate>
                 </GridView>
             </ScrollViewer>
+
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12">
+                <Button x:Name="PrevPageButton" Content="◀" Click="OnPreviousPage" />
+                <TextBlock x:Name="PageIndicator" VerticalAlignment="Center" Opacity="0.85" />
+                <Button x:Name="NextPageButton" Content="▶" Click="OnNextPage" />
+            </StackPanel>
         </Grid>
     </Grid>
 </UserControl>

@@ -37,7 +37,26 @@ public sealed partial class LaunchpadControl : UserControl
         {
             if (args.PropertyName is nameof(LaunchpadViewModel.FilteredApps))
                 AppGrid.ItemsSource = ViewModel.FilteredApps;
+            else if (args.PropertyName is nameof(LaunchpadViewModel.DisplayPage)
+                     or nameof(LaunchpadViewModel.TotalPages)
+                     or nameof(LaunchpadViewModel.FilteredCount))
+                UpdatePagination();
         };
         AppGrid.ItemsSource = ViewModel.FilteredApps;
+        UpdatePagination();
     }
+
+    private void UpdatePagination()
+    {
+        if (ViewModel is null) return;
+        PageIndicator.Text = $"{ViewModel.DisplayPage} / {ViewModel.TotalPages}";
+        PrevPageButton.IsEnabled = ViewModel.CurrentPage > 0;
+        NextPageButton.IsEnabled = (ViewModel.CurrentPage + 1) * ViewModel.PageSize < ViewModel.FilteredCount;
+    }
+
+    private void OnPreviousPage(object sender, RoutedEventArgs e) =>
+        ViewModel?.PreviousPageCommand.Execute(null);
+
+    private void OnNextPage(object sender, RoutedEventArgs e) =>
+        ViewModel?.NextPageCommand.Execute(null);
 }

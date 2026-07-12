@@ -4,7 +4,7 @@
 
 ## Parity status
 
-See `docs/PARITY_CHECKLIST.md` — **0 of 296** parity items are manually verified on Windows yet. Most settings exist in code; many UI flows are partial.
+See `docs/PARITY_CHECKLIST.md` — **0 of 296** parity items are manually verified on Windows yet. See `docs/PARITY_AUDIT.md` for an honest per-area engineering audit (implemented / partial / scaffold).
 
 ## What should work after `.\run.cmd`
 

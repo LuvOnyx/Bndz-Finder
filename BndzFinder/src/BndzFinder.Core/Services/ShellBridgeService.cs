@@ -14,6 +14,7 @@ public interface IShellBridgeService
     Task RequestMinimizeAsync(long hwnd, CancellationToken cancellationToken = default);
     Task RequestRestoreAsync(long hwnd, CancellationToken cancellationToken = default);
     Task ShutdownHostAsync(CancellationToken cancellationToken = default);
+    Task NotifySettingsReloadAsync(CancellationToken cancellationToken = default);
 }
 
 public sealed class ShellBridgeService : IShellBridgeService, IAsyncDisposable
@@ -53,6 +54,9 @@ public sealed class ShellBridgeService : IShellBridgeService, IAsyncDisposable
 
     public Task ShutdownHostAsync(CancellationToken cancellationToken = default) =>
         _client.SendAsync(new ShellHostMessage { Type = ShellHostMessageType.Shutdown }, cancellationToken);
+
+    public Task NotifySettingsReloadAsync(CancellationToken cancellationToken = default) =>
+        _client.SendAsync(new ShellHostMessage { Type = ShellHostMessageType.SettingsReload }, cancellationToken);
 
     private async Task ReceiveLoopAsync(CancellationToken ct)
     {
@@ -143,11 +147,13 @@ public interface IShellOverlayController
     bool IsStageManagerVisible { get; }
     void ToggleDock();
     void ToggleFinder();
+    void SetDockVisible(bool visible);
     void ShowLaunchpad();
     void HideLaunchpad();
     void ToggleStageManager();
     void ShowPreferences();
     void HandleHotkey(string bindingId);
+    void HandleHotCorner(HotCornerAction action);
 }
 
 public sealed class ShellOverlayController : IShellOverlayController
@@ -173,7 +179,13 @@ public sealed class ShellOverlayController : IShellOverlayController
 
     public void ToggleDock()
     {
-        _dockVisible = !_dockVisible;
+        SetDockVisible(!_dockVisible);
+    }
+
+    public void SetDockVisible(bool visible)
+    {
+        if (_dockVisible == visible) return;
+        _dockVisible = visible;
         DockVisibilityChanged?.Invoke();
     }
 
@@ -208,12 +220,84 @@ public sealed class ShellOverlayController : IShellOverlayController
 
     public void HandleHotkey(string bindingId)
     {
+        if (bindingId.StartsWith("corner:", StringComparison.OrdinalIgnoreCase)
+            && Enum.TryParse<HotCornerAction>(bindingId["corner:".Length..], true, out var cornerAction))
+        {
+            HandleHotCorner(cornerAction);
+            return;
+        }
+
         switch (bindingId)
         {
-            case "hotkeyDock": ToggleDock(); break;
-            case "hotkeyfinder": ToggleFinder(); break;
-            case "hotkeypad": ShowLaunchpad(); break;
-            case "stagemanager_hotkey": ToggleStageManager(); break;
+            case "hotkeyDock":
+            case "dock":
+                ToggleDock();
+                break;
+            case "hotkeyfinder":
+            case "finder":
+                ToggleFinder();
+                break;
+            case "hotkeypad":
+            case "launchpad":
+                ShowLaunchpad();
+                break;
+            case "stagemanager_hotkey":
+            case "stage":
+                ToggleStageManager();
+                break;
+            case "preferences":
+                ShowPreferences();
+                break;
         }
     }
+
+    public void HandleHotCorner(HotCornerAction action)
+    {
+        switch (action)
+        {
+            case HotCornerAction.Launchpad:
+                ShowLaunchpad();
+                break;
+            case HotCornerAction.StageManager:
+                ToggleStageManager();
+                break;
+            case HotCornerAction.ShowDesktop:
+                if (OperatingSystem.IsWindows())
+                    _ = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer", "shell:::{3080F90D-D7AD-11D9-BD98-0000947B0177}") { UseShellExecute = true });
+                break;
+            case HotCornerAction.StartMenu:
+                if (OperatingSystem.IsWindows())
+                    _ = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer", "shell:::{2559a1f3-21d7-11d4-bdaf-00c04f60b9f0}") { UseShellExecute = true });
+                break;
+            case HotCornerAction.ActionCenter:
+                if (OperatingSystem.IsWindows())
+                    _ = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer", "shell:::{48ded4a8-d2dd-451d-bf6d-4d3363b7f16b}") { UseShellExecute = true });
+                break;
+            case HotCornerAction.LockScreen:
+                if (OperatingSystem.IsWindows())
+                    _ = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("rundll32.exe", "user32.dll,LockWorkStation") { UseShellExecute = true });
+                break;
+            case HotCornerAction.DisplaySleep:
+                if (OperatingSystem.IsWindows())
+                    NativeShell.SendDisplaySleep();
+                break;
+            case HotCornerAction.WindowsWidgets:
+                if (OperatingSystem.IsWindows())
+                    _ = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "ms-widgets:",
+                        UseShellExecute = true
+                    });
+                break;
+        }
+    }
+}
+
+internal static class NativeShell
+{
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern nint SendMessage(nint hWnd, int msg, nint wParam, nint lParam);
+
+    public static void SendDisplaySleep() =>
+        SendMessage(new nint(0xffff), 0x0112, new nint(0xF170), new nint(2));
 }

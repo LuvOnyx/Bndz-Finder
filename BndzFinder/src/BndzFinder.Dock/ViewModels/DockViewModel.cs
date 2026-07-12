@@ -1,6 +1,7 @@
 using BndzFinder.Core.Models;
 using BndzFinder.Core.Services;
 using BndzFinder.Core.Settings;
+using BndzFinder.Interop;
 using BndzFinder.Shell.Assets;
 using BndzFinder.Shell.Badges;
 using BndzFinder.Shell.Dock;
@@ -24,6 +25,7 @@ public partial class DockViewModel : ObservableObject
     private readonly ProgressBarMirrorService _progress;
     private readonly WindowPreviewCoordinator _preview;
     private readonly IShellOverlayController? _overlays;
+    private readonly IWindowCaptureService? _capture;
     private readonly HashSet<string> _runningApps = new(StringComparer.OrdinalIgnoreCase);
 
     [ObservableProperty] private IReadOnlyList<PremiumDockLayoutItem> _layoutItems = [];
@@ -37,8 +39,14 @@ public partial class DockViewModel : ObservableObject
     [ObservableProperty] private double _dockBarWidth = 600;
     [ObservableProperty] private bool _pointerNearEdge;
     [ObservableProperty] private IReadOnlyDictionary<string, int?> _badgeCounts = new Dictionary<string, int?>();
+    [ObservableProperty] private string? _activeFolderStackPath;
 
     public bool PreviewEnabled => _settings.Current.PreviewOn;
+
+    public event Action<long>? PreviewShowRequested;
+    public event Action? PreviewHideRequested;
+
+    public IWindowCaptureService? CaptureService => _capture;
 
     public DockViewModel(
         ISettingsService settings,
@@ -48,7 +56,8 @@ public partial class DockViewModel : ObservableObject
         IDockBehaviorService? behavior = null,
         BadgePollingService? badges = null,
         ProgressBarMirrorService? progress = null,
-        IShellOverlayController? overlays = null)
+        IShellOverlayController? overlays = null,
+        IWindowCaptureService? capture = null)
     {
         _settings = settings;
         _layoutEngine = layoutEngine ?? new PremiumDockLayoutEngine();
@@ -59,6 +68,9 @@ public partial class DockViewModel : ObservableObject
         _progress = progress ?? new ProgressBarMirrorService();
         _preview = new WindowPreviewCoordinator(settings.Current.PreviewDelayMs, settings.Current.PreviewSize);
         _overlays = overlays;
+        _capture = capture;
+        _preview.PreviewShowRequested += hwnd => PreviewShowRequested?.Invoke(hwnd);
+        _preview.PreviewHideRequested += () => PreviewHideRequested?.Invoke();
         _settings.SettingsChanged += (_, _) => RefreshAll();
         _badges.CountsUpdated += (_, e) => BadgeCounts = e.Counts;
         _badges.Start(TimeSpan.FromSeconds(5));
@@ -70,6 +82,8 @@ public partial class DockViewModel : ObservableObject
     partial void OnHoveredIndexChanged(int? value) => RefreshLayout();
     partial void OnMagnificationEnabledChanged(bool value) => RefreshLayout();
     partial void OnPointerNearEdgeChanged(bool value) => UpdateVisibility();
+
+    partial void OnIsVisibleChanged(bool value) => _overlays?.SetDockVisible(value);
 
     [RelayCommand]
     public void OnPointerMoved(double position) => CursorPosition = position;
@@ -85,9 +99,14 @@ public partial class DockViewModel : ObservableObject
     public void OnIconPointerEntered(int index)
     {
         HoveredIndex = index;
-        if (PreviewEnabled)
-            _ = _preview.OnIconHoveredAsync(index, CancellationToken.None);
+        if (!PreviewEnabled || index < 0 || index >= LayoutItems.Count) return;
+        var item = LayoutItems[index].Item;
+        var hwnd = WindowEnumerationService.FindMainWindowForExecutable(item.TargetPath);
+        if (hwnd != nint.Zero)
+            _ = _preview.OnIconHoveredAsync(hwnd, CancellationToken.None);
     }
+
+    public void OnIconPointerExited() => _preview.OnIconExited();
 
     [RelayCommand]
     public async Task HandleItemClickAsync(DockItem item)
@@ -95,20 +114,27 @@ public partial class DockViewModel : ObservableObject
         switch (item.Kind)
         {
             case DockItemKind.SystemFinder:
+                _overlays?.HandleHotkey("hotkeyfinder");
+                break;
             case DockItemKind.SystemLaunchpad:
-            case DockItemKind.SystemCalendar:
-            case DockItemKind.SystemTrash:
-            case DockItemKind.SystemWeather:
+                _overlays?.HandleHotkey("hotkeypad");
+                break;
             case DockItemKind.SystemPreferences:
-                _overlays?.HandleHotkey(item.Kind switch
-                {
-                    DockItemKind.SystemLaunchpad => "hotkeypad",
-                    DockItemKind.SystemPreferences => "hotkeyfinder",
-                    _ => "hotkeyDock"
-                });
+                _overlays?.ShowPreferences();
+                break;
+            case DockItemKind.SystemCalendar:
+                if (OperatingSystem.IsWindows())
+                    _ = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("outlookcal:") { UseShellExecute = true });
+                break;
+            case DockItemKind.SystemTrash:
+                if (OperatingSystem.IsWindows())
+                    _ = System.Diagnostics.Process.Start("explorer", "shell:RecycleBinFolder");
+                break;
+            case DockItemKind.SystemWeather:
+                _overlays?.HandleHotkey("hotkeyfinder");
                 break;
             case DockItemKind.Folder:
-                _ = item;
+                ActiveFolderStackPath = item.TargetPath;
                 break;
             default:
                 await LaunchItemAsync(item);

@@ -1,3 +1,4 @@
+using BndzFinder.Dock.Helpers;
 using BndzFinder.Dock.ViewModels;
 using BndzFinder.Theming.Glass;
 using Microsoft.UI.Xaml;
@@ -18,6 +19,8 @@ public sealed partial class DockBarControl : UserControl
             new PropertyMetadata(null, OnViewModelChanged));
 
     private readonly List<DockIconControl> _iconControls = [];
+    private Flyout? _folderFlyout;
+    private Flyout? _previewFlyout;
 
     public DockViewModel? ViewModel
     {
@@ -50,9 +53,37 @@ public sealed partial class DockBarControl : UserControl
             {
                 RefreshDock();
             }
+            else if (args.PropertyName is nameof(DockViewModel.ActiveFolderStackPath)
+                     && !string.IsNullOrWhiteSpace(ViewModel.ActiveFolderStackPath))
+            {
+                ShowFolderStack(ViewModel.ActiveFolderStackPath);
+            }
         };
+        ViewModel.PreviewShowRequested += OnPreviewShowRequested;
+        ViewModel.PreviewHideRequested += OnPreviewHideRequested;
         RefreshDock();
     }
+
+    private void OnPreviewShowRequested(long hwnd)
+    {
+        if (ViewModel is null || !ViewModel.PreviewEnabled) return;
+        var capture = ViewModel.CaptureService?.CaptureWindow((nint)hwnd);
+        if (capture is null) return;
+
+        _previewFlyout ??= new Flyout { Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.Top };
+        var image = new Image
+        {
+            Width = Math.Min(320, capture.Width),
+            Height = Math.Min(200, capture.Height),
+            Stretch = Stretch.Uniform
+        };
+        var bitmap = BgraBitmapHelper.CreateFromBgra(capture.Pixels, capture.Width, capture.Height, 320);
+        if (bitmap is not null) image.Source = bitmap;
+        _previewFlyout.Content = image;
+        _previewFlyout.ShowAt(IconCanvas);
+    }
+
+    private void OnPreviewHideRequested() => _previewFlyout?.Hide();
 
     private void RefreshDock()
     {
@@ -78,6 +109,7 @@ public sealed partial class DockBarControl : UserControl
                 if (iconVm.Layout?.Index is int index && ViewModel.OnIconPointerEnteredCommand.CanExecute(index))
                     ViewModel.OnIconPointerEnteredCommand.Execute(index);
             };
+            control.PointerExited += (_, _) => ViewModel.OnIconPointerExited();
             control.Tapped += (_, _) =>
             {
                 if (iconVm.Layout?.Item is { } item)
@@ -89,6 +121,16 @@ public sealed partial class DockBarControl : UserControl
 
         IconCanvas.Width = ViewModel.DockBarWidth - 48;
         IconCanvas.Height = ViewModel.DockBarHeight;
+    }
+
+    private void ShowFolderStack(string folderPath)
+    {
+        _folderFlyout ??= new Flyout { Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.Top };
+        _folderFlyout.Content = new FolderStackFlyout
+        {
+            ViewModel = new FolderStackViewModel(folderPath)
+        };
+        _folderFlyout.ShowAt(IconCanvas);
     }
 
     private void ApplyGlass(GlassConfiguration glass)

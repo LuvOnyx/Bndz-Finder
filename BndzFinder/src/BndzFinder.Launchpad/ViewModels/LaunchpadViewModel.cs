@@ -8,6 +8,7 @@ public partial class LaunchpadViewModel : ObservableObject
 {
     private readonly ISettingsService _settings;
     private readonly AppCatalogService _catalog;
+    private readonly IShellOverlayController? _overlays;
 
     [ObservableProperty] private string _searchQuery = string.Empty;
     [ObservableProperty] private IReadOnlyList<AppCatalogEntry> _allApps = [];
@@ -18,11 +19,17 @@ public partial class LaunchpadViewModel : ObservableObject
     public int PageSize => 35;
     public int IconSize => _settings.Current.LaunchpadIconSize;
     public bool HideLabels => _settings.Current.LaunchpadHideLabels;
+    public int TotalPages => Math.Max(1, (int)Math.Ceiling(FilteredCount / (double)PageSize));
+    public int DisplayPage => CurrentPage + 1;
 
-    public LaunchpadViewModel(ISettingsService settings, AppCatalogService? catalog = null)
+    public LaunchpadViewModel(
+        ISettingsService settings,
+        AppCatalogService? catalog = null,
+        IShellOverlayController? overlays = null)
     {
         _settings = settings;
         _catalog = catalog ?? new AppCatalogService();
+        _overlays = overlays;
         _ = LoadAsync();
     }
 
@@ -32,10 +39,12 @@ public partial class LaunchpadViewModel : ObservableObject
         ApplyFilter();
     }
 
+    partial void OnCurrentPageChanged(int value) => ApplyFilter();
+
     [RelayCommand]
     public void NextPage()
     {
-        if ((CurrentPage + 1) * PageSize < FilteredApps.Count)
+        if ((CurrentPage + 1) * PageSize < FilteredCount)
             CurrentPage++;
     }
 
@@ -45,8 +54,27 @@ public partial class LaunchpadViewModel : ObservableObject
         if (CurrentPage > 0) CurrentPage--;
     }
 
+    private int _filteredCount;
+
+    public int FilteredCount
+    {
+        get => _filteredCount;
+        private set
+        {
+            if (_filteredCount == value) return;
+            _filteredCount = value;
+            OnPropertyChanged(nameof(FilteredCount));
+            OnPropertyChanged(nameof(TotalPages));
+            OnPropertyChanged(nameof(DisplayPage));
+        }
+    }
+
     [RelayCommand]
-    public void Dismiss() => IsOverlayVisible = false;
+    public void Dismiss()
+    {
+        IsOverlayVisible = false;
+        _overlays?.HideLaunchpad();
+    }
 
     private async Task LoadAsync()
     {
@@ -64,6 +92,9 @@ public partial class LaunchpadViewModel : ObservableObject
             .OrderBy(a => a.Name)
             .ToList();
         FilteredApps = filtered.Skip(CurrentPage * PageSize).Take(PageSize).ToList();
+        FilteredCount = filtered.Count;
+        OnPropertyChanged(nameof(TotalPages));
+        OnPropertyChanged(nameof(DisplayPage));
     }
 
     [RelayCommand]
@@ -71,6 +102,7 @@ public partial class LaunchpadViewModel : ObservableObject
     {
         if (!OperatingSystem.IsWindows()) return;
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(entry.Path) { UseShellExecute = true });
+        _overlays?.HideLaunchpad();
         IsOverlayVisible = false;
     }
 }
