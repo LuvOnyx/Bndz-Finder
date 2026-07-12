@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\Directory.Build.Windows.props" />
+  <PropertyGroup>
+    <RootNamespace>BndzFinder.Dock</RootNamespace>
+    <Description>MyDock window, fisheye layout, and D3D11 compositor.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250108002" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Vortice.Direct3D11" Version="3.6.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BndzFinder.Core\BndzFinder.Core.csproj" />
+    <ProjectReference Include="..\BndzFinder.Shell\BndzFinder.Shell.csproj" />
+    <ProjectReference Include="..\BndzFinder.Interop\BndzFinder.Interop.csproj" />
+    <ProjectReference Include="..\BndzFinder.Animations\BndzFinder.Animations.csproj" />
+  </ItemGroup>
+</Project>

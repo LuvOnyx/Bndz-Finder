@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\Directory.Build.Windows.props" />
+  <PropertyGroup>
+    <RootNamespace>BndzFinder.StageManager</RootNamespace>
+    <Description>Stage Manager window thumbnail strip.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250108002" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BndzFinder.Core\BndzFinder.Core.csproj" />
+    <ProjectReference Include="..\BndzFinder.Interop\BndzFinder.Interop.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>BndzFinder.Theming</RootNamespace>
+    <AssemblyName>BndzFinder.Theming</AssemblyName>
+    <Description>Theme pack loader and editors for Bndz-Finder.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BndzFinder.Core\BndzFinder.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.IO.Compression.ZipFile" Version="4.3.0" />
+  </ItemGroup>
+</Project>

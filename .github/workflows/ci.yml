@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'cursor/**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-cross-platform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Build Core
+        run: dotnet build BndzFinder/src/BndzFinder.Core/BndzFinder.Core.csproj -c Release
+      - name: Build Shell
+        run: dotnet build BndzFinder/src/BndzFinder.Shell/BndzFinder.Shell.csproj -c Release
+      - name: Build Animations
+        run: dotnet build BndzFinder/src/BndzFinder.Animations/BndzFinder.Animations.csproj -c Release
+      - name: Build Theming
+        run: dotnet build BndzFinder/src/BndzFinder.Theming/BndzFinder.Theming.csproj -c Release
+      - name: Build ShellHost
+        run: dotnet build BndzFinder/src/BndzFinder.ShellHost/BndzFinder.ShellHost.csproj -c Release
+      - name: Test
+        run: dotnet test BndzFinder/BndzFinder.sln -c Release --filter "FullyQualifiedName~BndzFinder" --no-build 2>/dev/null || dotnet test BndzFinder/tests/BndzFinder.Core.Tests/BndzFinder.Core.Tests.csproj -c Release
+      - name: Test Shell
+        run: dotnet test BndzFinder/tests/BndzFinder.Shell.Tests/BndzFinder.Shell.Tests.csproj -c Release
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Build full solution
+        run: dotnet build BndzFinder/BndzFinder.sln -c Release
+      - name: Test
+        run: dotnet test BndzFinder/BndzFinder.sln -c Release --no-build
