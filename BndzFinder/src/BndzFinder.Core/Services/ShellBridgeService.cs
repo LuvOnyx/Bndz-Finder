@@ -7,6 +7,7 @@ public interface IShellBridgeService
 {
     event EventHandler<string>? HotkeyPressed;
     event EventHandler<long>? MinimizeCompleted;
+    event EventHandler<string>? MinimizeStarted;
     event EventHandler<long>? RestoreRequested;
     event EventHandler<string>? TrayIconsUpdated;
     event EventHandler<string>? WindowListUpdated;
@@ -31,6 +32,7 @@ public sealed class ShellBridgeService : IShellBridgeService, IAsyncDisposable
 
     public event EventHandler<string>? HotkeyPressed;
     public event EventHandler<long>? MinimizeCompleted;
+    public event EventHandler<string>? MinimizeStarted;
     public event EventHandler<long>? RestoreRequested;
     public event EventHandler<string>? TrayIconsUpdated;
     public event EventHandler<string>? WindowListUpdated;
@@ -69,6 +71,9 @@ public sealed class ShellBridgeService : IShellBridgeService, IAsyncDisposable
                     break;
                 case ShellHostMessageType.MinimizeCompleted:
                     MinimizeCompleted?.Invoke(this, message.WindowHandle);
+                    break;
+                case ShellHostMessageType.MinimizeStarted:
+                    MinimizeStarted?.Invoke(this, message.Payload ?? string.Empty);
                     break;
                 case ShellHostMessageType.RestoreRequested:
                     RestoreRequested?.Invoke(this, message.WindowHandle);

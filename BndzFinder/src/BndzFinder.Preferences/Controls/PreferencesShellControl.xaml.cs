@@ -41,6 +41,8 @@ public sealed partial class PreferencesShellControl : UserControl
         DockMonitorBox.SelectedItem = ViewModel.Settings.DockMonitorName;
         FinderMonitorBox.ItemsSource = ViewModel.AvailableMonitors;
         FinderMonitorBox.SelectedItem = ViewModel.Settings.FinderMonitorName;
+        ScreenRoundToggle.IsOn = ViewModel.Settings.ScreenRoundEnabled;
+        ScreenRoundRadiusSlider.Value = ViewModel.Settings.ScreenRoundRadius;
         AccentPicker.SelectedHex = ViewModel.Settings.AccentColor;
         GlassTintPicker.SelectedHex = ViewModel.GlassTintColor;
         DockOpacitySlider.Value = ViewModel.Settings.DockOpacity * 100;
@@ -120,6 +122,8 @@ public sealed partial class PreferencesShellControl : UserControl
         if (LanguageBox.SelectedItem is string lang) ViewModel.Settings.Language = lang;
         ViewModel.Settings.DockMonitorName = DockMonitorBox.SelectedItem?.ToString();
         ViewModel.Settings.FinderMonitorName = FinderMonitorBox.SelectedItem?.ToString();
+        ViewModel.Settings.ScreenRoundEnabled = ScreenRoundToggle.IsOn;
+        ViewModel.Settings.ScreenRoundRadius = (int)ScreenRoundRadiusSlider.Value;
         ViewModel.Settings.AccentColor = AccentPicker.SelectedHex;
         ViewModel.Settings.DockOpacity = DockOpacitySlider.Value / 100;
         ViewModel.Settings.DockCornerRadius = CornerRadiusSlider.Value;

@@ -49,15 +49,21 @@ These are why the product does not look or behave like MyDockFinder:
 - [x] Launchpad `Image` binding from icon pipeline
 - [x] Dock hide-delay timer
 
-### Sprint B — MyDockFinder signature features
+### Sprint B — MyDockFinder signature features *(in progress on this branch)*
 
+- [x] **ScreenRound** — rounded monitor corners per display (`ScreenRoundManager`)
+- [x] **Visible minimize overlay** — `MinimizeOverlayWindow` + `MinimizeStarted` IPC
+- [x] **Dock drag reorder** — horizontal drag swaps pinned icon order
+- [x] **Theme pack resolver** — `ThemePackResolver` reads active pack paths
+- [x] **Dock corner radius** — wired from settings to glass chrome
+- [x] **Expanded context menus** — Show in Explorer, folder sort submenu
 - [ ] Window preview via DWM (`WindowPreviewService`)
-- [ ] Visible minimize-to-dock overlay (Genie/Scale/Suck/ScaleDX)
-- [ ] Drag-and-drop reorder + pin/unpin running apps
-- [ ] Folder stack fan/grid with drag-out
+- [ ] Drag files/folders onto dock
+- [ ] Folder stack fan/grid with drag-out + real icons
 - [ ] Discord/WeChat/QQ badge adapters (real counts)
 - [ ] Weather API integration
 - [ ] Progress bar mirror from tray
+- [ ] Theme pack apply to Finder clock/calendar skins in UI
 
 ### Sprint C — Ship gate
 

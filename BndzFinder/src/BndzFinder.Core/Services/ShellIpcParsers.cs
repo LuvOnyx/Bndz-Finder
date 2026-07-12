@@ -45,3 +45,36 @@ public sealed class WindowSnapshot
     public string Title { get; init; } = string.Empty;
     public long Handle { get; init; }
 }
+
+public sealed class MinimizeStartedInfo
+{
+    public long Handle { get; init; }
+    public int X { get; init; }
+    public int Y { get; init; }
+    public int Width { get; init; }
+    public int Height { get; init; }
+    public string Effect { get; init; } = "Genie";
+    public string? SnapshotBase64 { get; init; }
+}
+
+public static class MinimizeStartedPayload
+{
+    public static string Serialize(long hwnd, int x, int y, int width, int height, string effect, string? snapshotBase64) =>
+        JsonSerializer.Serialize(new
+        {
+            Handle = hwnd,
+            X = x,
+            Y = y,
+            Width = width,
+            Height = height,
+            Effect = effect,
+            SnapshotBase64 = snapshotBase64
+        });
+
+    public static MinimizeStartedInfo? Deserialize(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try { return JsonSerializer.Deserialize<MinimizeStartedInfo>(json); }
+        catch { return null; }
+    }
+}

@@ -21,6 +21,8 @@ public sealed partial class DockBarControl : UserControl
     private readonly List<DockIconControl> _iconControls = [];
     private Flyout? _folderFlyout;
     private Flyout? _previewFlyout;
+    private int? _dragSourceIndex;
+    private double _dragStartX;
 
     public DockViewModel? ViewModel
     {
@@ -112,6 +114,23 @@ public sealed partial class DockBarControl : UserControl
                     ViewModel.OnIconPointerEntered(index);
             };
             control.PointerExited += (_, _) => ViewModel.OnIconPointerExited();
+            control.PointerPressed += (_, e) =>
+            {
+                if (iconVm.Layout?.Index is int index)
+                {
+                    _dragSourceIndex = index;
+                    _dragStartX = e.GetCurrentPoint(IconCanvas).Position.X;
+                }
+            };
+            control.PointerReleased += (_, e) =>
+            {
+                if (ViewModel is null || _dragSourceIndex is not int from) return;
+                var delta = e.GetCurrentPoint(IconCanvas).Position.X - _dragStartX;
+                if (Math.Abs(delta) < 24) return;
+                var to = Math.Clamp(delta > 0 ? from + 1 : from - 1, 0, ViewModel.IconViewModels.Count - 1);
+                _ = ViewModel.ReorderItemAsync(from, to);
+                _dragSourceIndex = null;
+            };
             control.Tapped += (_, _) =>
             {
                 if (iconVm.Layout?.Item is { } item)
@@ -204,6 +223,22 @@ public sealed partial class DockBarControl : UserControl
                 Command = ViewModel.LaunchItemCommand,
                 CommandParameter = item
             });
+            menu.Items.Add(new MenuFlyoutItem
+            {
+                Text = "Show in Explorer",
+                Command = ViewModel.ShowInExplorerCommand,
+                CommandParameter = item
+            });
+        }
+
+        if (item.Kind is Core.Models.DockItemKind.Folder)
+        {
+            menu.Items.Add(new MenuFlyoutItem
+            {
+                Text = "Show in Explorer",
+                Command = ViewModel.ShowInExplorerCommand,
+                CommandParameter = item
+            });
         }
 
         if (isApp && isEphemeral && !item.IsPinned)
@@ -224,6 +259,10 @@ public sealed partial class DockBarControl : UserControl
                 Command = ViewModel.HandleItemClickCommand,
                 CommandParameter = item
             });
+            var sortMenu = new MenuFlyoutSubItem { Text = "Sort By" };
+            sortMenu.Items.Add(new MenuFlyoutItem { Text = "Name" });
+            sortMenu.Items.Add(new MenuFlyoutItem { Text = "Date Modified" });
+            menu.Items.Add(sortMenu);
         }
 
         if (item.Kind is Core.Models.DockItemKind.SystemPreferences)

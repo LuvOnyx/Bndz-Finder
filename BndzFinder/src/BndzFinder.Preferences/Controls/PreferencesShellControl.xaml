@@ -46,6 +46,8 @@
                     <StackPanel x:Name="ScreenSection" Spacing="12" Visibility="Collapsed">
                         <ComboBox x:Name="DockMonitorBox" Header="Dock monitor" Width="280" />
                         <ComboBox x:Name="FinderMonitorBox" Header="Finder monitor" Width="280" />
+                        <ToggleSwitch x:Name="ScreenRoundToggle" Header="Rounded screen corners (ScreenRound)" />
+                        <Slider x:Name="ScreenRoundRadiusSlider" Header="Corner round radius" Minimum="8" Maximum="64" />
                     </StackPanel>
 
                     <StackPanel x:Name="LookAndBehaviorSection" Spacing="12" Visibility="Collapsed">

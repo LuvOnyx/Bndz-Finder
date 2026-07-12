@@ -16,6 +16,7 @@ using BndzFinder.StageManager.Controls;
 using BndzFinder.StageManager.ViewModels;
 using BndzFinder.Shell.Assets;
 using BndzFinder.Shell.Services;
+using BndzFinder.Theming;
 using BndzFinder.Theming.Glass;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -36,6 +37,8 @@ public partial class App : Application
     private LaunchpadWindow? _launchpadWindow;
     private StageManagerWindow? _stageWindow;
     private PreferencesWindow? _prefsWindow;
+    private ScreenRoundManager? _screenRound;
+    private MinimizeOverlayWindow? _minimizeOverlay;
 
     public App()
     {
@@ -57,7 +60,10 @@ public partial class App : Application
         {
             // WinUI 3 has no Application.OnExit — restore taskbar on dispatcher shutdown.
             DispatcherQueue.GetForCurrentThread().ShutdownCompleted += (_, _) =>
+            {
+                _screenRound?.Dispose();
                 _host?.Services.GetService<ITaskbarLifecycleService>()?.Restore();
+            };
 
             _host = Host.CreateDefaultBuilder()
                 .ConfigureServices(ConfigureServices)
@@ -100,9 +106,18 @@ public partial class App : Application
             overlays.PreferencesRequested += () => ShowPreferences();
 
             var bridge = Services.GetRequiredService<IShellBridgeService>();
+            _minimizeOverlay = new MinimizeOverlayWindow();
             bridge.HotkeyPressed += (_, id) => overlays.HandleHotkey(id);
+            bridge.MinimizeStarted += (_, json) =>
+            {
+                var info = MinimizeStartedPayload.Deserialize(json);
+                if (info is not null)
+                    _minimizeOverlay?.Play(info);
+            };
             bridge.TrayIconsUpdated += (_, json) => finderVm.ApplyTrayIconsFromPayload(json);
             bridge.WindowListUpdated += (_, json) => stageVm.ApplyWindowsFromPayload(json);
+
+            ApplyScreenRound(settings);
 
             settings.SettingsChanged += (_, _) =>
             {
@@ -110,6 +125,7 @@ public partial class App : Application
                 dockVm.RefreshAll();
                 finderVm.NotifyWidgetVisibility();
                 SyncTaskbar();
+                ApplyScreenRound(settings);
                 _ = bridge.NotifySettingsReloadAsync();
             };
 
@@ -182,6 +198,17 @@ public partial class App : Application
         _prefsWindow.Activate();
     }
 
+    private void ApplyScreenRound(ISettingsService settings)
+    {
+        _screenRound ??= new ScreenRoundManager();
+        var monitors = Services.GetRequiredService<IDisplayMonitorService>().GetMonitors();
+        _screenRound.Apply(
+            monitors,
+            settings.Current.ScreenRoundEnabled,
+            settings.Current.ScreenRoundRadius,
+            settings.Current.ScreenRoundColor);
+    }
+
     private static void ConfigureServices(IServiceCollection services)
     {
         services.AddBndzFinderCore();
@@ -197,6 +224,8 @@ public partial class App : Application
             () => sp.GetRequiredService<ISettingsService>().Current.HideTaskbarAllMonitors,
             () => sp.GetRequiredService<ISettingsService>().Current.AutoHideTaskbarAtStartup));
         services.AddSingleton<IMacBrandingBootstrap, MacBrandingBootstrap>();
+        services.AddSingleton<IThemePackResolver, ThemePackResolver>();
+        services.AddSingleton<IThemePackService, ThemePackService>();
         services.AddSingleton<IWindowPreviewService, WindowPreviewService>();
         services.AddSingleton<IWindowCaptureService, WindowCaptureService>();
         services.AddSingleton<ISystemMetricsService, WmiSystemMetricsService>();

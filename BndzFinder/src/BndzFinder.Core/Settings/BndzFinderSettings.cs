@@ -106,6 +106,11 @@ public sealed class BndzFinderSettings
     public string? ActiveIconTheme { get; set; }
     public string? ActiveDockSkin { get; set; }
 
+    // Screen round (MyDockFinder ScreenRound)
+    public bool ScreenRoundEnabled { get; set; } = true;
+    public int ScreenRoundRadius { get; set; } = 28;
+    public string ScreenRoundColor { get; set; } = "#000000";
+
     // Hotkeys & hot corners
     public HotkeyBinding DockHotkey { get; set; } = new() { Id = "hotkeyDock" };
     public HotkeyBinding FinderHotkey { get; set; } = new() { Id = "hotkeyfinder" };

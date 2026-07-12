@@ -219,6 +219,21 @@ internal sealed class ShellHostWorker : BackgroundService
             TargetHeight = 48,
             DurationSeconds = 0.35 / Math.Max(0.25, _settings.Current.MinimizeAnimationSpeed)
         };
+
+        await _server.BroadcastAsync(new ShellHostMessage
+        {
+            Type = ShellHostMessageType.MinimizeStarted,
+            WindowHandle = hwnd.ToInt64(),
+            Payload = MinimizeStartedPayload.Serialize(
+                hwnd.ToInt64(),
+                rect.Left,
+                rect.Top,
+                rect.Right - rect.Left,
+                rect.Bottom - rect.Top,
+                _settings.Current.MinimizeEffect.ToString(),
+                snapshotBase64: null)
+        }, CancellationToken.None).ConfigureAwait(false);
+
         await _animator.AnimateAsync(request, _settings.Current.MinimizeEffect, CancellationToken.None).ConfigureAwait(false);
         await _server.BroadcastAsync(new ShellHostMessage
         {

@@ -6,6 +6,7 @@ public enum ShellHostMessageType : byte
     Pong = 2,
     MinimizeRequested = 10,
     MinimizeCompleted = 11,
+    MinimizeStarted = 14,
     RestoreRequested = 12,
     RestoreCompleted = 13,
     TrayIconsUpdated = 20,

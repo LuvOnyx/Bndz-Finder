@@ -241,6 +241,34 @@ public partial class DockViewModel : ObservableObject
         return Task.CompletedTask;
     }
 
+    [RelayCommand]
+    public void ShowInExplorer(DockItem item)
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        var path = item.Kind == DockItemKind.Folder ? item.TargetPath : item.TargetPath;
+        if (File.Exists(path))
+            _ = System.Diagnostics.Process.Start("explorer", $"/select,\"{path}\"");
+        else if (Directory.Exists(path))
+            _ = System.Diagnostics.Process.Start("explorer", path);
+    }
+
+    [RelayCommand]
+    public async Task ReorderItemAsync(int fromIndex, int toIndex)
+    {
+        if (_settings.Current.LockIcons || fromIndex == toIndex) return;
+        var items = _settings.Current.DockItems.OrderBy(i => i.SortOrder).ToList();
+        if (fromIndex < 0 || toIndex < 0 || fromIndex >= items.Count || toIndex >= items.Count) return;
+        var moving = items[fromIndex];
+        if (!_behavior.CanDragReorder(_settings.Current, moving)) return;
+        items.RemoveAt(fromIndex);
+        items.Insert(toIndex, moving);
+        for (var i = 0; i < items.Count; i++)
+            items[i].SortOrder = i;
+        _settings.Current.DockItems = items;
+        await _settings.SaveAsync().ConfigureAwait(false);
+        RefreshAll();
+    }
+
     public void RefreshAll()
     {
         RefreshRunningApps();
@@ -326,6 +354,7 @@ public partial class DockViewModel : ObservableObject
             DpiScale = s.DpiScale,
             GlobalBlur = s.GlobalBlurValue,
             DockOpacity = s.DockOpacity,
+            DockCornerRadius = s.DockCornerRadius,
             GlassEffect = MapGlassEffect(s.DockGlassEffect),
             IconReflectionEnabled = s.IconReflectionEnabled,
             IconReflectionOpacity = s.IconReflectionOpacity,
