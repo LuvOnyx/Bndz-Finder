@@ -17,6 +17,8 @@
     <!-- Class libraries must not run PRI packaging; merged at BndzFinder.App (WinExe). -->
     <MrtCoreEnablePriGeneration Condition="'$(OutputType)' != 'WinExe'">false</MrtCoreEnablePriGeneration>
     <GenerateLibraryLayout Condition="'$(OutputType)' != 'WinExe'">false</GenerateLibraryLayout>
+    <!-- Partial-property [ObservableProperty] does not source-generate on WinUI+SDK10 yet; field pattern is used. -->
+    <NoWarn>$(NoWarn);MVVMTK0045</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />

@@ -185,7 +185,7 @@ dotnet nuget locals all --clear
 | `MSB3073` XamlCompiler exited with code 1 | Invalid XAML — e.g. `UniformGrid` (not in WinUI 3), wrong `AcrylicBrush` placement. Fixed in latest branch |
 | `MSB4062` ExpandPriContent / Pri.Tasks.dll | WinUI **class libraries** must set `MrtCoreEnablePriGeneration=false` (see `Directory.Build.Windows.props` + `Directory.Build.targets`). Appx tools path is routed via `Microsoft.Windows.SDK.BuildTools` for the `WinExe` app only. |
 | `CS9035` Required member not set | Remove `required` from types WinUI XAML activates (`DockIconViewModel`, etc.) — XAML codegen uses parameterless construction. |
-| `MVVMTK0045` | WinUI ViewModels use `[ObservableProperty] public partial T Prop { get; set; }` (not private fields). |
+| `MVVMTK0045` | WinUI ViewModels use field-backed `[ObservableProperty]` (partial-property pattern fails on SDK 10 WinUI builds with CS9248). Warning suppressed in `Directory.Build.Windows.props`. |
 | `NU1504` duplicate packages | Central versions in `Directory.Packages.props`; `CommunityToolkit.Mvvm` only in `Directory.Build.Windows.props`. |
 | Build retries on compile errors | `build.ps1` retries **restore only**. `CS9035` used to false-match `503` — fixed. Run `scripts\preflight.ps1` before building. |
 | WinUI build fails | Install Windows App SDK / VS Build Tools with C++ workload |
