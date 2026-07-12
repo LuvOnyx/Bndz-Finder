@@ -102,6 +102,19 @@ public partial class App : Application
             var taskbar = Services.GetRequiredService<ITaskbarController>();
             if (settings.Current.HideTaskbarWhenDockShown)
                 taskbar.SetAutoHide(true);
+
+            var assets = new BndzFinder.Shell.Assets.AssetCatalogService();
+            var missingIcons = assets.GetMissingSystemIcons();
+            if (missingIcons.Count > 0)
+            {
+                var logDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "BndzFinder");
+                Directory.CreateDirectory(logDir);
+                var msg = $"Missing macosicons.com system icons: {string.Join(", ", missingIcons)}. "
+                    + "Run: pwsh -File BndzFinder/scripts/import-macos-icons.ps1 (see ASSETS.md)";
+                File.AppendAllText(Path.Combine(logDir, "startup.log"), $"[{DateTime.Now:O}] WARN {msg}{Environment.NewLine}");
+            }
         }
         catch (Exception ex)
         {

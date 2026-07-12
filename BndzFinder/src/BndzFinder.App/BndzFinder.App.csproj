@@ -14,6 +14,9 @@
     <PackageReference Include="H.NotifyIcon.WinUI" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="..\..\assets\**\*" Link="assets\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\BndzFinder.Core\BndzFinder.Core.csproj" />
     <ProjectReference Include="..\BndzFinder.Dock\BndzFinder.Dock.csproj" />
     <ProjectReference Include="..\BndzFinder.Finder\BndzFinder.Finder.csproj" />

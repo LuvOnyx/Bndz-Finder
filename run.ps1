@@ -41,6 +41,18 @@ if (-not (Test-Path $BuildScript)) {
     Write-Error "Missing $BuildScript"
 }
 
+$SystemIconsDir = Join-Path $ProjectRoot 'assets\icons\system'
+$RequiredIcons = @('finder.png', 'launchpad.png', 'calendar.png', 'trash.png', 'weather.png', 'preferences.png')
+$MissingIcons = $RequiredIcons | Where-Object { -not (Test-Path (Join-Path $SystemIconsDir $_)) }
+if ($MissingIcons.Count -gt 0) {
+    Write-Host ""
+    Write-Host "WARNING: Official macosicons.com system icons are not imported yet." -ForegroundColor Yellow
+    Write-Host "  Missing: $($MissingIcons -join ', ')" -ForegroundColor Yellow
+    Write-Host "  Run: `$env:MACOSICONS_API_KEY='your-key'; pwsh -File '$ProjectRoot\scripts\import-macos-icons.ps1'" -ForegroundColor Yellow
+    Write-Host "  Free API key: https://docs.macosicons.com/api-management" -ForegroundColor DarkGray
+    Write-Host ""
+}
+
 if ($Publish) {
     Invoke-BndzScript $BuildScript @{ Configuration = $Configuration; Publish = $true }
     $AppExe = Join-Path $ProjectRoot 'src\BndzFinder.App\bin\Publish\Portable\win-x64\BndzFinder.App.exe'

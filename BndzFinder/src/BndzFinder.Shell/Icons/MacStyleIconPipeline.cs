@@ -21,12 +21,14 @@ public sealed class MacStyleIconPipeline : IIconPipeline
     private const float ContentSize = 824f;
     private const float CornerRadiusRatio = 0.2237f;
     private readonly string _cacheDirectory;
+    private readonly string? _appIconShellPath;
 
-    public MacStyleIconPipeline(string? cacheDirectory = null)
+    public MacStyleIconPipeline(string? cacheDirectory = null, string? appIconShellPath = null)
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         _cacheDirectory = cacheDirectory ?? Path.Combine(appData, "BndzFinder", "IconCache");
         Directory.CreateDirectory(_cacheDirectory);
+        _appIconShellPath = appIconShellPath ?? ResolveDefaultShellPath();
     }
 
     public string GetCachePath(string targetPath)
@@ -38,6 +40,16 @@ public sealed class MacStyleIconPipeline : IIconPipeline
 
     public async Task<IconPipelineResult> ProcessAsync(string targetPath, CancellationToken cancellationToken = default)
     {
+        if (IsMacOsIconsAsset(targetPath) && File.Exists(targetPath))
+        {
+            return new IconPipelineResult
+            {
+                CacheFilePath = targetPath,
+                Width = CanvasSize,
+                Height = CanvasSize
+            };
+        }
+
         var cachePath = GetCachePath(targetPath);
         if (File.Exists(cachePath))
         {
@@ -73,6 +85,20 @@ public sealed class MacStyleIconPipeline : IIconPipeline
         return new IconPipelineResult { CacheFilePath = cachePath, Width = CanvasSize, Height = CanvasSize };
     }
 
+    private static bool IsMacOsIconsAsset(string targetPath)
+    {
+        var normalized = targetPath.Replace('\\', '/');
+        return normalized.Contains("/assets/icons/system/", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("/icons/system/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? ResolveDefaultShellPath()
+    {
+        var catalog = new Assets.AssetCatalogService();
+        var path = catalog.ResolvePath("app-icon-shell");
+        return File.Exists(path) ? path : null;
+    }
+
     private static void DrawSourceIcon(SKCanvas canvas, string targetPath, SKRect rect)
     {
         if (File.Exists(targetPath) && targetPath.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
@@ -105,8 +131,18 @@ public sealed class MacStyleIconPipeline : IIconPipeline
         canvas.DrawText(letter, rect.MidX, rect.MidY + textPaint.TextSize * 0.35f, textPaint);
     }
 
-    private static void ApplyShellTemplate(SKCanvas canvas, SKRect rect, float cornerRadius)
+    private void ApplyShellTemplate(SKCanvas canvas, SKRect rect, float cornerRadius)
     {
+        if (!string.IsNullOrWhiteSpace(_appIconShellPath) && File.Exists(_appIconShellPath))
+        {
+            using var shell = SKBitmap.Decode(_appIconShellPath);
+            if (shell is not null)
+            {
+                canvas.DrawBitmap(shell, new SKRect(0, 0, CanvasSize, CanvasSize));
+                return;
+            }
+        }
+
         using var gloss = new SKPaint
         {
             Shader = SKShader.CreateLinearGradient(
