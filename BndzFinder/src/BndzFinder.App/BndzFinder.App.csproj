@@ -10,6 +10,7 @@
     <!-- Unpackaged WinUI must be self-contained; dotnet run cannot load WinAppSDK native DLLs. -->
     <SelfContained>true</SelfContained>
     <PublishTrimmed>false</PublishTrimmed>
+    <WindowsAppSDKBootstrapAutoInitializeOptions_OnNoMatch_ShowUI>false</WindowsAppSDKBootstrapAutoInitializeOptions_OnNoMatch_ShowUI>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
   </PropertyGroup>
   <ItemGroup>

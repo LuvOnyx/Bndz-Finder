@@ -191,3 +191,4 @@ dotnet nuget locals all --clear
 | WinUI build fails | Install Windows App SDK / VS Build Tools with C++ workload |
 | No dock visible | Ensure ShellHost is running; check single-instance lock in `%TEMP%` |
 | App exits `-1073741189` (0xC0000135) | **Do not** `dotnet run` the App. Use `.\run.cmd` or run `BndzFinder.App.exe` from `bin\Release\...\win-x64\`. Delete `bin`/`obj` and rebuild if DLLs are missing. |
+| `0x80670016` Package dependency could not be resolved | Self-contained bootstrap could not find WinUI runtime. Ensure `Microsoft.ui.xaml.dll` is beside `BndzFinder.App.exe`. Delete `src\BndzFinder.App\bin` and `obj`, run `.\run.cmd`. Or install [Windows App SDK 1.6 runtime](https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe). |

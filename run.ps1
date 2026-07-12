@@ -77,11 +77,14 @@ $AppExe = $AppExeItem.FullName
 $missingDlls = Test-BndzWinUiRuntime -ExePath $AppExe
 if ($missingDlls.Count -gt 0) {
     Write-Host ""
-    Write-Host "WARNING: WinUI runtime DLLs missing next to the App exe:" -ForegroundColor Yellow
-    Write-Host "  $($missingDlls -join ', ')" -ForegroundColor Yellow
+    Write-Host "ERROR: WinUI runtime DLLs missing next to the App exe:" -ForegroundColor Red
+    Write-Host "  $($missingDlls -join ', ')" -ForegroundColor Red
     Write-Host "  Folder: $(Split-Path -Parent $AppExe)" -ForegroundColor DarkGray
-    Write-Host "  Rebuild with: pwsh -File '$BuildScript' -Configuration $Configuration" -ForegroundColor Yellow
     Write-Host ""
+    Write-Host "Self-contained WinUI requires these DLLs beside BndzFinder.App.exe." -ForegroundColor Yellow
+    Write-Host "Fix: delete src\BndzFinder.App\bin and obj, then run .\run.cmd again." -ForegroundColor Yellow
+    Write-Host "Or publish portable: pwsh -File '$BuildScript' -Configuration $Configuration -Publish" -ForegroundColor Yellow
+    exit 1
 }
 
 Write-Host ""
