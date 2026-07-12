@@ -5,6 +5,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.ApplicationModel.DataTransfer;
+using Windows.Storage;
 
 namespace BndzFinder.Dock.Controls;
 
@@ -126,6 +128,26 @@ public sealed partial class FolderStackFlyout : UserControl
             Tag = entry
         };
         btn.Click += (_, _) => _ = ViewModel?.OpenEntryCommand.ExecuteAsync(entry);
+        EnableDragOut(btn, entry);
         return btn;
+    }
+
+    private static void EnableDragOut(Button btn, FolderStackEntry entry)
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        btn.CanDrag = true;
+        btn.DragStarting += async (_, e) =>
+        {
+            try
+            {
+                var file = await StorageFile.GetFileFromPathAsync(entry.Path);
+                e.Data.SetStorageItems([file]);
+                e.Data.RequestedOperation = DataPackageOperation.Copy;
+            }
+            catch
+            {
+                e.Cancel = true;
+            }
+        };
     }
 }

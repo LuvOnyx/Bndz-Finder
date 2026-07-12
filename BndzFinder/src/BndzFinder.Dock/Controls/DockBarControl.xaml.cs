@@ -230,6 +230,14 @@ public sealed partial class DockBarControl : UserControl
             DockAcrylic.TintColor = ParseColor(glass.TintColor, 1.0);
             DockAcrylic.TintOpacity = glass.TintOpacity;
         }
+        else if (glass.Effect == GlassEffectKind.LiquidGlass)
+        {
+            var liquid = glass.LiquidGlass ?? new LiquidGlassParameters();
+            DockAcrylic.TintColor = Color.FromArgb(255, 16, 16, 20);
+            DockAcrylic.TintOpacity = 0.38 + liquid.Distortion * 0.12;
+            DockAcrylic.TintLuminosityOpacity = 0.9 + liquid.EdgeHighlight * 0.1;
+            GlassBackdrop.Opacity = Math.Clamp(glass.Opacity + liquid.Refraction * 0.08, 0.7, 0.95);
+        }
         else
         {
             DockAcrylic.TintOpacity = glass.TintOpacity;

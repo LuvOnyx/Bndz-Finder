@@ -70,6 +70,7 @@ public sealed partial class FinderBarControl : UserControl
         KeyboardText.Text = ViewModel.KeyboardLayout;
         ClockText.Text = ViewModel.ClockText;
         DateText.Text = ViewModel.DateText;
+        ApplyTimeSkin(ViewModel.TimeSkinImagePath);
         TrayIcons.Items.Clear();
         foreach (var icon in ViewModel.TrayIcons)
         {
@@ -131,4 +132,20 @@ public sealed partial class FinderBarControl : UserControl
     private void OnCalendarClick(object sender, RoutedEventArgs e) => ViewModel?.OpenControlCenter("calendar");
 
     private void OnPreferencesClick(object sender, RoutedEventArgs e) => ViewModel?.OpenPreferences();
+
+    private void ApplyTimeSkin(string? skinPath)
+    {
+        if (!string.IsNullOrWhiteSpace(skinPath) && File.Exists(skinPath))
+        {
+            ClockWidget.Background = new ImageBrush
+            {
+                ImageSource = new BitmapImage(new Uri(skinPath)),
+                Stretch = Stretch.UniformToFill,
+                Opacity = 0.22
+            };
+            return;
+        }
+
+        ClockWidget.Background = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));
+    }
 }

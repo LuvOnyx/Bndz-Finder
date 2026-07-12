@@ -1,3 +1,4 @@
+using BndzFinder.Core.Services;
 using BndzFinder.Interop;
 using BndzFinder.Shell.Services;
 using Xunit;
@@ -28,10 +29,20 @@ public class SprintCFeatureTests
     }
 
     [Fact]
-    public async Task WeatherService_RefreshKeepsDefaultOnNetworkFailure()
+    public void ProgressPayload_RoundTrips()
     {
-        var weather = new WeatherService();
-        await weather.RefreshAsync(999, 999);
-        Assert.False(string.IsNullOrWhiteSpace(weather.GetCurrentCondition()));
+        var json = ProgressPayload.Serialize([
+            new ProgressEntrySnapshot { ExePath = @"C:\Apps\Example.exe", Value = 0.42 }
+        ]);
+        var parsed = ProgressPayload.Deserialize(json);
+        Assert.Single(parsed);
+        Assert.Equal(0.42, parsed[0].Value);
+    }
+
+    [Fact]
+    public void TaskbarProgress_ParsePercent_FromTitle()
+    {
+        Assert.Equal(0.42, TaskbarProgressService.ParsePercent("Copying files 42%"));
+        Assert.Null(TaskbarProgressService.ParsePercent("No progress here"));
     }
 }

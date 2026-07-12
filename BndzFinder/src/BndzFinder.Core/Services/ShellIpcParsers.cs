@@ -55,11 +55,41 @@ public sealed class MinimizeStartedInfo
     public int Height { get; init; }
     public string Effect { get; init; } = "Genie";
     public string? SnapshotBase64 { get; init; }
+    public double TargetX { get; init; }
+    public double TargetY { get; init; }
+}
+
+public sealed class ProgressEntrySnapshot
+{
+    public string ExePath { get; init; } = string.Empty;
+    public double Value { get; init; }
+}
+
+public static class ProgressPayload
+{
+    public static string Serialize(IEnumerable<ProgressEntrySnapshot> entries) =>
+        JsonSerializer.Serialize(entries);
+
+    public static IReadOnlyList<ProgressEntrySnapshot> Deserialize(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        try { return JsonSerializer.Deserialize<List<ProgressEntrySnapshot>>(json) ?? []; }
+        catch { return []; }
+    }
 }
 
 public static class MinimizeStartedPayload
 {
-    public static string Serialize(long hwnd, int x, int y, int width, int height, string effect, string? snapshotBase64) =>
+    public static string Serialize(
+        long hwnd,
+        int x,
+        int y,
+        int width,
+        int height,
+        string effect,
+        string? snapshotBase64,
+        double targetX = 0,
+        double targetY = 0) =>
         JsonSerializer.Serialize(new
         {
             Handle = hwnd,
@@ -68,7 +98,9 @@ public static class MinimizeStartedPayload
             Width = width,
             Height = height,
             Effect = effect,
-            SnapshotBase64 = snapshotBase64
+            SnapshotBase64 = snapshotBase64,
+            TargetX = targetX,
+            TargetY = targetY
         });
 
     public static MinimizeStartedInfo? Deserialize(string json)

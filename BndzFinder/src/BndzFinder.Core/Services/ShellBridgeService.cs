@@ -11,6 +11,7 @@ public interface IShellBridgeService
     event EventHandler<long>? RestoreRequested;
     event EventHandler<string>? TrayIconsUpdated;
     event EventHandler<string>? WindowListUpdated;
+    event EventHandler<string>? ProgressUpdated;
     Task StartAsync(CancellationToken cancellationToken = default);
     Task RequestMinimizeAsync(long hwnd, CancellationToken cancellationToken = default);
     Task RequestRestoreAsync(long hwnd, CancellationToken cancellationToken = default);
@@ -36,6 +37,7 @@ public sealed class ShellBridgeService : IShellBridgeService, IAsyncDisposable
     public event EventHandler<long>? RestoreRequested;
     public event EventHandler<string>? TrayIconsUpdated;
     public event EventHandler<string>? WindowListUpdated;
+    public event EventHandler<string>? ProgressUpdated;
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
@@ -83,6 +85,9 @@ public sealed class ShellBridgeService : IShellBridgeService, IAsyncDisposable
                     break;
                 case ShellHostMessageType.WindowListUpdated:
                     WindowListUpdated?.Invoke(this, message.Payload ?? "[]");
+                    break;
+                case ShellHostMessageType.ProgressUpdated:
+                    ProgressUpdated?.Invoke(this, message.Payload ?? "[]");
                     break;
             }
         }

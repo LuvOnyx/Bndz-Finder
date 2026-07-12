@@ -1,3 +1,5 @@
+using BndzFinder.Animations;
+using BndzFinder.Core.Models;
 using BndzFinder.Core.Services;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
@@ -16,17 +18,20 @@ public sealed class MinimizeOverlayWindow : Window
 {
     private readonly Image _image = new() { Stretch = Stretch.Fill };
     private readonly ScaleTransform _scale = new() { ScaleX = 1, ScaleY = 1 };
+    private readonly SkewTransform _skew = new();
     private readonly TranslateTransform _translate = new();
+    private readonly MinimizeFrameCalculator _calculator = new();
     private readonly DispatcherTimer _timer = new();
     private MinimizeStartedInfo? _active;
+    private MinimizeEffect _effect = MinimizeEffect.Genie;
     private int _frame;
-    private const int TotalFrames = 24;
+    private int _totalFrames = 28;
 
     public MinimizeOverlayWindow()
     {
         Title = "Bndz-Finder Minimize";
         var root = new Grid { Background = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0)) };
-        _image.RenderTransform = new TransformGroup { Children = { _scale, _translate } };
+        _image.RenderTransform = new TransformGroup { Children = { _scale, _skew, _translate } };
         root.Children.Add(_image);
         Content = root;
 
@@ -46,6 +51,9 @@ public sealed class MinimizeOverlayWindow : Window
     {
         _active = info;
         _frame = 0;
+        _effect = Enum.TryParse<MinimizeEffect>(info.Effect, true, out var parsed)
+            ? parsed
+            : MinimizeEffect.Genie;
 
         if (!string.IsNullOrWhiteSpace(info.SnapshotBase64))
         {
@@ -73,18 +81,46 @@ public sealed class MinimizeOverlayWindow : Window
     {
         if (_active is null) return;
         _frame++;
-        var t = _frame / (double)TotalFrames;
-        var eased = t < 0.5 ? 4 * t * t * t : 1 - Math.Pow(-2 * t + 2, 3) / 2;
+        var t = _frame / (double)_totalFrames;
 
-        _scale.ScaleX = _scale.ScaleY = 1.0 - eased * 0.92;
-        _translate.X = eased * 120;
-        _translate.Y = eased * (_active.Height * 0.6);
+        var request = new MinimizeAnimationRequest
+        {
+            SourceWindow = (nint)_active.Handle,
+            WindowSnapshot = [],
+            TargetX = _active.TargetX - _active.X,
+            TargetY = _active.TargetY - _active.Y
+        };
 
-        if (_frame >= TotalFrames)
+        var state = _calculator.Calculate(request, _effect, t);
+
+        _scale.ScaleX = Math.Max(0.05, state.ScaleX);
+        _scale.ScaleY = Math.Max(0.05, state.ScaleY);
+        _translate.X = state.TranslateX;
+        _translate.Y = state.TranslateY;
+
+        if (_effect == MinimizeEffect.Genie)
+        {
+            _skew.AngleX = state.GenieNeck * 28;
+            _skew.CenterX = _active.Width * 0.5;
+            _skew.CenterY = _active.Height;
+        }
+        else if (_effect == MinimizeEffect.Suck)
+        {
+            _skew.AngleX = state.Funnel * -18;
+            _skew.CenterX = _active.Width * 0.5;
+            _skew.CenterY = _active.Height * 0.5;
+        }
+        else
+        {
+            _skew.AngleX = 0;
+        }
+
+        if (_frame >= _totalFrames)
         {
             _timer.Stop();
             AppWindow.Hide();
             _active = null;
+            _skew.AngleX = 0;
         }
     }
 }

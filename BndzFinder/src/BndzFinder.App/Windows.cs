@@ -116,6 +116,7 @@ public partial class App : Application
             };
             bridge.TrayIconsUpdated += (_, json) => finderVm.ApplyTrayIconsFromPayload(json);
             bridge.WindowListUpdated += (_, json) => stageVm.ApplyWindowsFromPayload(json);
+            bridge.ProgressUpdated += (_, json) => dockVm.ApplyProgressFromPayload(json);
 
             ApplyScreenRound(settings);
 
@@ -245,7 +246,8 @@ public partial class App : Application
                 settings,
                 sp.GetRequiredService<ISystemMetricsService>(),
                 sp.GetRequiredService<ITrayMirrorFacade>(),
-                sp.GetRequiredService<WeatherService>());
+                sp.GetRequiredService<WeatherService>(),
+                sp.GetRequiredService<IThemePackResolver>());
             vm.PreferencesRequested += () => sp.GetRequiredService<IShellOverlayController>().ShowPreferences();
             return vm;
         });

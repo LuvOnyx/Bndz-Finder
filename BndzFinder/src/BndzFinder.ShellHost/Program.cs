@@ -26,6 +26,7 @@ internal static class Program
                 services.AddSingleton<MinimizeAnimatorFactory>();
                 services.AddSingleton<MinimizeAnimationEngine>();
                 services.AddSingleton<IWindowCaptureService, WindowCaptureService>();
+                services.AddSingleton<ITaskbarProgressService, TaskbarProgressService>();
                 services.AddSingleton<IMinimizeHookService, MinimizeHookService>();
                 services.AddSingleton<IHotkeyBindingService, HotkeyBindingService>();
                 services.AddSingleton<IHotkeyBindingRegistrar>(sp => (IHotkeyBindingRegistrar)sp.GetRequiredService<IHotkeyBindingService>());
@@ -48,6 +49,7 @@ internal sealed class ShellHostWorker : BackgroundService
     private readonly TrayIconMirrorService _trayMirror;
     private readonly MinimizeAnimationEngine _animator;
     private readonly IWindowCaptureService _capture;
+    private readonly ITaskbarProgressService _progressMirror;
     private readonly IMinimizeHookService _minimizeHook;
     private readonly GlobalHotkeyService _globalHotkeys;
     private readonly WinEventHookService _winEvents;
@@ -65,6 +67,7 @@ internal sealed class ShellHostWorker : BackgroundService
         TrayIconMirrorService trayMirror,
         MinimizeAnimationEngine animator,
         IWindowCaptureService capture,
+        ITaskbarProgressService progressMirror,
         IMinimizeHookService minimizeHook,
         GlobalHotkeyService globalHotkeys,
         WinEventHookService winEvents,
@@ -79,6 +82,7 @@ internal sealed class ShellHostWorker : BackgroundService
         _trayMirror = trayMirror;
         _animator = animator;
         _capture = capture;
+        _progressMirror = progressMirror;
         _minimizeHook = minimizeHook;
         _globalHotkeys = globalHotkeys;
         _winEvents = winEvents;
@@ -113,6 +117,7 @@ internal sealed class ShellHostWorker : BackgroundService
         while (!stoppingToken.IsCancellationRequested)
         {
             await BroadcastTrayIconsAsync(stoppingToken).ConfigureAwait(false);
+            await BroadcastProgressAsync(stoppingToken).ConfigureAwait(false);
             await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken).ConfigureAwait(false);
         }
 
@@ -155,6 +160,62 @@ internal sealed class ShellHostWorker : BackgroundService
             Payload = payload
         }, ct).ConfigureAwait(false);
     }
+
+    private async Task BroadcastProgressAsync(CancellationToken ct)
+    {
+        var merged = new Dictionary<string, ProgressEntrySnapshot>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var entry in _progressMirror.GetActiveProgress())
+        {
+            merged[entry.ExePath] = new ProgressEntrySnapshot
+            {
+                ExePath = entry.ExePath,
+                Value = entry.Value
+            };
+        }
+
+        foreach (var icon in _trayMirror.GetVisibleTrayIcons())
+        {
+            var tooltipProgress = TaskbarProgressService.ParsePercent(icon.Tooltip);
+            if (tooltipProgress is null) continue;
+            if (!TryGetExeFromOwner(icon.OwnerWindow, out var exePath)) continue;
+            if (!merged.TryGetValue(exePath, out var existing) || tooltipProgress.Value > existing.Value)
+            {
+                merged[exePath] = new ProgressEntrySnapshot
+                {
+                    ExePath = exePath,
+                    Value = tooltipProgress.Value
+                };
+            }
+        }
+
+        await _server.BroadcastAsync(new ShellHostMessage
+        {
+            Type = ShellHostMessageType.ProgressUpdated,
+            Payload = ProgressPayload.Serialize(merged.Values)
+        }, ct).ConfigureAwait(false);
+    }
+
+    private static bool TryGetExeFromOwner(nint hwnd, out string exePath)
+    {
+        exePath = string.Empty;
+        if (hwnd == nint.Zero) return false;
+        try
+        {
+            _ = GetWindowThreadProcessId(hwnd, out var pid);
+            if (pid == 0) return false;
+            using var process = System.Diagnostics.Process.GetProcessById((int)pid);
+            exePath = process.MainModule?.FileName ?? string.Empty;
+            return !string.IsNullOrWhiteSpace(exePath);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(nint hWnd, out uint lpdwProcessId);
 
     private async Task BroadcastWindowListAsync(CancellationToken ct)
     {
@@ -207,14 +268,18 @@ internal sealed class ShellHostWorker : BackgroundService
     {
         var capture = _capture.CaptureWindow(hwnd);
         _capture.GetWindowRect(hwnd, out var rect);
+        var screenHeight = GetSystemMetrics(1);
+        var screenWidth = GetSystemMetrics(0);
+        var targetX = screenWidth / 2.0;
+        var targetY = screenHeight - 72;
         var request = new MinimizeAnimationRequest
         {
             SourceWindow = hwnd,
             WindowSnapshot = capture?.Pixels ?? [],
             SnapshotWidth = capture?.Width ?? 0,
             SnapshotHeight = capture?.Height ?? 0,
-            TargetX = rect.Left,
-            TargetY = rect.Bottom,
+            TargetX = targetX,
+            TargetY = targetY,
             TargetWidth = 48,
             TargetHeight = 48,
             DurationSeconds = 0.35 / Math.Max(0.25, _settings.Current.MinimizeAnimationSpeed)
@@ -233,7 +298,9 @@ internal sealed class ShellHostWorker : BackgroundService
                 _settings.Current.MinimizeEffect.ToString(),
                 snapshotBase64: capture is null
                     ? null
-                    : BgraPngEncoder.EncodePngBase64(capture.Pixels, capture.Width, capture.Height))
+                    : BgraPngEncoder.EncodePngBase64(capture.Pixels, capture.Width, capture.Height),
+                targetX: targetX,
+                targetY: targetY)
         }, CancellationToken.None).ConfigureAwait(false);
 
         await _animator.AnimateAsync(request, _settings.Current.MinimizeEffect, CancellationToken.None).ConfigureAwait(false);
@@ -243,6 +310,9 @@ internal sealed class ShellHostWorker : BackgroundService
             WindowHandle = hwnd.ToInt64()
         }).ConfigureAwait(false);
     }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int nIndex);
 }
 
 internal sealed class ShellHostHotkeyRegistrar : IHotkeyBindingRegistrar

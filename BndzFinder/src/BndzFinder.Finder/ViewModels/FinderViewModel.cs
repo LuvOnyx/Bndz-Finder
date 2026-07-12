@@ -2,6 +2,7 @@ using System.Management;
 using BndzFinder.Core.Services;
 using BndzFinder.Shell.Services;
 using BndzFinder.Interop;
+using BndzFinder.Theming;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -13,6 +14,7 @@ public partial class FinderViewModel : ObservableObject
     private readonly ISystemMetricsService _metrics;
     private readonly ITrayMirrorFacade _trayMirror;
     private readonly WeatherService _weather;
+    private readonly IThemePackResolver? _themePacks;
     private bool _traySyncedFromIpc;
 
     [ObservableProperty] private double _cpuUsage;
@@ -29,6 +31,7 @@ public partial class FinderViewModel : ObservableObject
     [ObservableProperty] private IReadOnlyList<TrayProxyItem> _trayIcons = [];
     [ObservableProperty] private bool _isDark;
     [ObservableProperty] private double _barHeight = 28;
+    [ObservableProperty] private string? _timeSkinImagePath;
 
     public bool ShowCpu => _settings.Current.ShowCpu;
     public bool ShowGpu => _settings.Current.ShowGpu;
@@ -50,16 +53,20 @@ public partial class FinderViewModel : ObservableObject
         ISettingsService settings,
         ISystemMetricsService? metrics = null,
         ITrayMirrorFacade? trayMirror = null,
-        WeatherService? weather = null)
+        WeatherService? weather = null,
+        IThemePackResolver? themePacks = null)
     {
         _settings = settings;
         _metrics = metrics ?? new WmiSystemMetricsService();
         _trayMirror = trayMirror ?? new TrayMirrorFacade(new TrayIconMirrorService());
         _weather = weather ?? new WeatherService();
+        _themePacks = themePacks;
         BarHeight = settings.Current.FinderHeight;
+        TimeSkinImagePath = _themePacks?.ResolveTimeSkinPath(settings.Current);
         _settings.SettingsChanged += (_, _) =>
         {
             BarHeight = _settings.Current.FinderHeight;
+            TimeSkinImagePath = _themePacks?.ResolveTimeSkinPath(_settings.Current);
             NotifyWidgetVisibility();
         };
         _ = StartPollingAsync();

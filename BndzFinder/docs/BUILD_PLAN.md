@@ -64,12 +64,12 @@ These are why the product does not look or behave like MyDockFinder:
 - [x] Weather API integration (Open-Meteo)
 - [x] Minimize snapshot over IPC (PNG base64)
 - [x] Theme pack dock skin image overlay
-- [ ] Progress bar mirror from tray
-- [ ] Theme pack apply to Finder clock/calendar skins in UI
+- [x] Progress bar mirror from tray
+- [x] Theme pack apply to Finder clock/calendar skins in UI
 
 ### Sprint C — Ship gate
 
-- [ ] Theme pack apply to dock/finder/clock
+- [x] Theme pack apply to dock/finder/clock
 - [ ] Startup modes (registry / task scheduler)
 - [ ] Hotkey editor UI
 - [ ] Systematic `PARITY_CHECKLIST.md` QA on Windows 11 x64

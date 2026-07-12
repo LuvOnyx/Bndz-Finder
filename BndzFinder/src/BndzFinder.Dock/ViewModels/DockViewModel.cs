@@ -332,6 +332,13 @@ public partial class DockViewModel : ObservableObject
         RefreshAll();
     }
 
+    public void ApplyProgressFromPayload(string json)
+    {
+        foreach (var entry in ProgressPayload.Deserialize(json))
+            _progress.SetProgress(entry.ExePath, entry.Value);
+        RefreshLayout();
+    }
+
     public void RefreshAll()
     {
         RefreshRunningApps();
