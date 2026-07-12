@@ -145,6 +145,13 @@ public interface IShellOverlayController
     bool IsFinderVisible { get; }
     bool IsLaunchpadVisible { get; }
     bool IsStageManagerVisible { get; }
+
+    event Action? DockVisibilityChanged;
+    event Action? FinderVisibilityChanged;
+    event Action? LaunchpadVisibilityChanged;
+    event Action? StageManagerVisibilityChanged;
+    event Action? PreferencesRequested;
+
     void ToggleDock();
     void ToggleFinder();
     void SetDockVisible(bool visible);

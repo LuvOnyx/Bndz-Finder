@@ -1,4 +1,5 @@
 using BndzFinder.Core.Models;
+using BndzFinder.Core.Orchestration;
 using BndzFinder.Core.Services;
 using BndzFinder.Dock.Controls;
 using BndzFinder.Dock.Services;
@@ -19,6 +20,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media;
+using Windows.Graphics;
 using WinRT.Interop;
 
 namespace BndzFinder.App;
@@ -240,10 +243,9 @@ public sealed class DockWindow : ShellOverlayWindow
     {
         SystemBackdrop = glass?.Effect switch
         {
-            GlassEffectKind.Mica => new Microsoft.UI.Xaml.Media.MicaBackdrop(),
-            GlassEffectKind.Acrylic or GlassEffectKind.LiquidGlass =>
-                new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop(),
-            _ => new Microsoft.UI.Xaml.Media.MicaBackdrop()
+            GlassEffectKind.Mica => new MicaBackdrop(),
+            GlassEffectKind.Acrylic or GlassEffectKind.LiquidGlass => new DesktopAcrylicBackdrop(),
+            _ => new MicaBackdrop()
         };
     }
 
@@ -271,7 +273,7 @@ public sealed class FinderWindow : ShellOverlayWindow
             p.IsAlwaysOnTop = true;
         }
         AppWindow.IsShownInSwitchers = false;
-        SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
+        SystemBackdrop = new DesktopAcrylicBackdrop();
     }
 }
 
@@ -288,7 +290,7 @@ public sealed class LaunchpadWindow : ShellOverlayWindow
             p.SetBorderAndTitleBar(false, false);
             p.IsAlwaysOnTop = true;
         }
-        SystemBackdrop = new Microsoft.UI.Xaml.Media.AcrylicBackdrop();
+        SystemBackdrop = new DesktopAcrylicBackdrop();
         if (Content is LaunchpadControl launchpad)
         {
             launchpad.KeyDown += (_, e) =>
@@ -329,6 +331,6 @@ public sealed class PreferencesWindow : Window
             p.SetBorderAndTitleBar(true, true);
             p.IsResizable = true;
         }
-        SystemBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop();
+        SystemBackdrop = new MicaBackdrop();
     }
 }
