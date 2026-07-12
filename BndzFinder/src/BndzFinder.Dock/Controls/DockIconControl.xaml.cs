@@ -37,7 +37,9 @@ public sealed partial class DockIconControl : UserControl
 
     private void ApplyViewModel(DockIconViewModel vm)
     {
-        var layout = vm.Layout;
+        if (vm.Layout is not { } layout)
+            return;
+
         var size = layout.Size;
 
         Width = size + 8;

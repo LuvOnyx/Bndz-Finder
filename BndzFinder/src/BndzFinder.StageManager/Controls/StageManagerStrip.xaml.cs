@@ -1,6 +1,7 @@
 using BndzFinder.Interop;
 using BndzFinder.StageManager.Helpers;
 using BndzFinder.StageManager.ViewModels;
+using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;

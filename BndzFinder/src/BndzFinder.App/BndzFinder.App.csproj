@@ -2,6 +2,8 @@
   <Import Project="..\..\Directory.Build.Windows.props" />
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
+    <MrtCoreEnablePriGeneration>true</MrtCoreEnablePriGeneration>
+    <GenerateProjectPriFile>true</GenerateProjectPriFile>
     <RootNamespace>BndzFinder.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Description>Bndz-Finder main WinUI 3 host application.</Description>

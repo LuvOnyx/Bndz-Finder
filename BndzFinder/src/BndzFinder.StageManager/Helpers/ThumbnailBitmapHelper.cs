@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Storage.Streams;
 
@@ -5,6 +6,14 @@ namespace BndzFinder.StageManager.Helpers;
 
 public static class ThumbnailBitmapHelper
 {
+    [ComImport]
+    [Guid("905A0FE0-BC53-11DF-8C49-001E4FC686E8")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IBufferByteAccess
+    {
+        unsafe byte* Buffer();
+    }
+
     public static WriteableBitmap? CreateFromBgra(byte[]? pixels, int width, int height, int maxSize)
     {
         if (pixels is null || width <= 0 || height <= 0 || pixels.Length < width * height * 4)
@@ -17,11 +26,25 @@ public static class ThumbnailBitmapHelper
             ? DownscaleBgra(pixels, width, height, targetWidth, targetHeight)
             : pixels;
 
+        var byteCount = targetWidth * targetHeight * 4;
+        if (scaled.Length < byteCount)
+            return null;
+
         var bitmap = new WriteableBitmap(targetWidth, targetHeight);
-        using var stream = bitmap.PixelBuffer.AsStream();
-        stream.Write(scaled, 0, targetWidth * targetHeight * 4);
-        bitmap.Invalidate();
+        CopyPixels(bitmap, scaled, byteCount);
         return bitmap;
+    }
+
+    private static unsafe void CopyPixels(WriteableBitmap bitmap, byte[] pixels, int byteCount)
+    {
+        var buffer = bitmap.PixelBuffer;
+        var length = (int)Math.Min(buffer.Length, (uint)byteCount);
+        var access = (IBufferByteAccess)buffer;
+        fixed (byte* src = pixels)
+        {
+            Buffer.MemoryCopy(src, access.Buffer(), length, length);
+        }
+        bitmap.Invalidate();
     }
 
     private static byte[] DownscaleBgra(byte[] source, int srcW, int srcH, int dstW, int dstH)

@@ -106,14 +106,14 @@ public sealed partial class DockBarControl : UserControl
             Canvas.SetTop(control, iconVm.RenderY);
             control.PointerEntered += (_, _) =>
             {
-                if (iconVm.Layout?.Index is int index && ViewModel.OnIconPointerEnteredCommand.CanExecute(index))
-                    ViewModel.OnIconPointerEnteredCommand.Execute(index);
+                if (iconVm.Layout?.Index is int index)
+                    ViewModel.OnIconPointerEntered(index);
             };
             control.PointerExited += (_, _) => ViewModel.OnIconPointerExited();
             control.Tapped += (_, _) =>
             {
                 if (iconVm.Layout?.Item is { } item)
-                    _ = ViewModel.HandleItemClickAsyncCommand.ExecuteAsync(item);
+                    _ = ViewModel.HandleItemClickAsync(item);
             };
             IconCanvas.Children.Add(control);
             _iconControls.Add(control);
@@ -172,11 +172,11 @@ public sealed partial class DockBarControl : UserControl
     {
         if (ViewModel is null) return;
         var pos = e.GetCurrentPoint(IconCanvas).Position;
-        ViewModel.OnPointerMovedCommand.Execute(pos.X);
+        ViewModel.OnPointerMoved(pos.X);
     }
 
     private void OnPointerExited(object sender, PointerRoutedEventArgs e)
     {
-        ViewModel?.OnPointerExitedCommand.Execute(null);
+        ViewModel?.OnPointerExited();
     }
 }
