@@ -11,6 +11,10 @@ public partial class StageManagerViewModel : ObservableObject
 
     [ObservableProperty] private IReadOnlyList<WindowThumbnailItem> _windows = [];
 
+    public int ThumbnailSize => _settings.Current.StageManagerWindowSize;
+    public bool ShowTitles => _settings.Current.ShowStageManagerWindowTitle;
+    public bool UseBlur => _settings.Current.StageManagerWindowBlur;
+
     public StageManagerViewModel(ISettingsService settings)
     {
         _settings = settings;
@@ -21,22 +25,16 @@ public partial class StageManagerViewModel : ObservableObject
     {
         while (true)
         {
-            Windows = WindowEnumerationService.GetOpenWindows(_settings.Current.StageManagerBlacklist);
+            Windows = WindowEnumerationService.GetOpenWindows(_settings.Current.StageManagerBlacklist)
+                .Take(_settings.Current.StageManagerWindowCount)
+                .ToList();
             await Task.Delay(500).ConfigureAwait(false);
         }
     }
 
     [RelayCommand]
-    public void FocusWindow(WindowThumbnailItem item)
-    {
-        if (!OperatingSystem.IsWindows()) return;
-        _ = item.Hwnd;
-    }
+    public void FocusWindow(WindowThumbnailItem item) => WindowOperations.FocusWindow(item.Hwnd);
 
     [RelayCommand]
-    public void CloseWindow(WindowThumbnailItem item)
-    {
-        if (!OperatingSystem.IsWindows()) return;
-        _ = item.Hwnd;
-    }
+    public void CloseWindow(WindowThumbnailItem item) => WindowOperations.CloseWindow(item.Hwnd);
 }

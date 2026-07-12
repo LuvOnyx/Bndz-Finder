@@ -56,10 +56,10 @@ public sealed class BackupService : IBackupService
             if (File.Exists(settingsPath))
             {
                 var json = await File.ReadAllTextAsync(settingsPath, cancellationToken).ConfigureAwait(false);
-                var settings = JsonSerializer.Deserialize<Settings.BndzFinderSettings>(json);
+                var settings = JsonSerializer.Deserialize<BndzFinderSettings>(json);
                 if (settings is not null)
                 {
-                    await _settings.SaveAsync(cancellationToken).ConfigureAwait(false);
+                    await _settings.ReplaceCurrentAsync(settings, cancellationToken).ConfigureAwait(false);
                 }
             }
         }

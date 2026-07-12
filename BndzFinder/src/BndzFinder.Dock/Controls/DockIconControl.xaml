@@ -68,6 +68,21 @@
             </Grid>
         </Border>
 
+        <!-- Badge -->
+        <Border x:Name="BadgeLayer" HorizontalAlignment="Right" VerticalAlignment="Top"
+                Margin="0,-4,-4,0" Background="#FF3B30" CornerRadius="8" MinWidth="16" MinHeight="16"
+                Padding="4,1" Visibility="Collapsed">
+            <TextBlock x:Name="BadgeText" Foreground="White" FontSize="9" FontWeight="SemiBold"
+                       HorizontalAlignment="Center" />
+        </Border>
+
+        <!-- Progress bar -->
+        <Border x:Name="ProgressLayer" Height="3" VerticalAlignment="Bottom" Margin="6,0,6,2"
+                Background="#30FFFFFF" CornerRadius="2" Visibility="Collapsed">
+            <Border x:Name="ProgressFill" HorizontalAlignment="Left" Background="#FFFFFFFF"
+                    CornerRadius="2" Width="0" />
+        </Border>
+
         <!-- Running indicator -->
         <Ellipse
             x:Name="RunningDot"

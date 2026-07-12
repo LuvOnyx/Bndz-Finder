@@ -1,7 +1,8 @@
 <UserControl
     x:Class="BndzFinder.Preferences.Controls.PreferencesShellControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:BndzFinder.Preferences.Controls">
 
     <Grid>
         <NavigationView x:Name="Nav" PaneDisplayMode="Left" IsBackButtonVisible="Collapsed"
@@ -19,30 +20,71 @@
                 <NavigationViewItem Content="Themes" Tag="Themes" />
             </NavigationView.MenuItems>
 
-            <ScrollViewer x:Name="SectionContent" Padding="24">
-                <StackPanel x:Name="SectionPanel" Spacing="16" MaxWidth="640">
+            <ScrollViewer Padding="24">
+                <StackPanel x:Name="SectionPanel" Spacing="16" MaxWidth="720">
                     <TextBlock x:Name="SectionTitle" FontSize="24" FontWeight="SemiBold" />
+
                     <StackPanel x:Name="GeneralSection" Spacing="12">
                         <TextBlock Text="Dock position" />
-                        <ComboBox x:Name="DockPositionBox" Width="240" />
-                        <ToggleSwitch x:Name="AutoHideDock" Header="Automatically hide and show the Dock" />
+                        <ComboBox x:Name="DockPositionBox" Width="280" />
+                        <TextBlock Text="Dock visibility" />
+                        <ComboBox x:Name="DisplayModeBox" Width="280" />
+                        <ComboBox x:Name="LanguageBox" Header="Language" Width="280" />
                     </StackPanel>
+
                     <StackPanel x:Name="AppearanceSection" Spacing="12" Visibility="Collapsed">
+                        <local:PremiumColorPicker x:Name="AccentPicker" Label="Accent color" />
+                        <local:PremiumColorPicker x:Name="GlassTintPicker" Label="Glass tint color" />
                         <TextBlock Text="Glass effect" />
-                        <ComboBox x:Name="GlassEffectBox" Width="240" />
+                        <ComboBox x:Name="GlassEffectBox" Width="280" />
                         <TextBlock Text="Icon hover effect" />
-                        <ComboBox x:Name="IconEffectBox" Width="240" />
+                        <ComboBox x:Name="IconEffectBox" Width="280" />
+                        <Slider x:Name="DockOpacitySlider" Header="Dock opacity" Minimum="20" Maximum="100" />
+                        <Slider x:Name="CornerRadiusSlider" Header="Corner radius" Minimum="0" Maximum="48" />
                     </StackPanel>
+
+                    <StackPanel x:Name="ScreenSection" Spacing="12" Visibility="Collapsed">
+                        <ComboBox x:Name="DockMonitorBox" Header="Dock monitor" Width="280" />
+                        <ComboBox x:Name="FinderMonitorBox" Header="Finder monitor" Width="280" />
+                    </StackPanel>
+
+                    <StackPanel x:Name="WidgetsSection" Spacing="8" Visibility="Collapsed">
+                        <TextBlock Text="Optional menu bar widgets — enable only what you want." TextWrapping="WrapWholeWords" Opacity="0.8" />
+                        <ToggleSwitch x:Name="WidgetCpu" Header="CPU usage" />
+                        <ToggleSwitch x:Name="WidgetGpu" Header="GPU usage" />
+                        <ToggleSwitch x:Name="WidgetMemory" Header="Memory usage" />
+                        <ToggleSwitch x:Name="WidgetDisk" Header="Disk usage" />
+                        <ToggleSwitch x:Name="WidgetNetwork" Header="Network" />
+                        <ToggleSwitch x:Name="WidgetBattery" Header="Battery" />
+                        <ToggleSwitch x:Name="WidgetWeather" Header="Weather" />
+                        <ToggleSwitch x:Name="WidgetAudio" Header="Sound" />
+                        <ToggleSwitch x:Name="WidgetBluetooth" Header="Bluetooth" />
+                        <ToggleSwitch x:Name="WidgetDisplay" Header="Display" />
+                        <ToggleSwitch x:Name="WidgetKeyboard" Header="Keyboard layout" />
+                        <ToggleSwitch x:Name="WidgetMedia" Header="Media controls" />
+                        <ToggleSwitch x:Name="WidgetNotifications" Header="Notifications" />
+                    </StackPanel>
+
+                    <StackPanel x:Name="LaunchpadSection" Spacing="12" Visibility="Collapsed">
+                        <TextBlock Text="Launchpad opens as an overlay via hotkey — not forced at startup." TextWrapping="WrapWholeWords" Opacity="0.8" />
+                    </StackPanel>
+
                     <StackPanel x:Name="WindowAnimationsSection" Spacing="12" Visibility="Collapsed">
                         <TextBlock Text="Minimize windows using" />
-                        <ComboBox x:Name="MinimizeEffectBox" Width="240" />
+                        <ComboBox x:Name="MinimizeEffectBox" Width="280" />
                     </StackPanel>
+
                     <StackPanel x:Name="AdvancedSection" Spacing="12" Visibility="Collapsed">
                         <TextBlock Text="Launchpad hotkey" />
-                        <TextBox x:Name="LaunchpadHotkeyBox" Width="240" IsReadOnly="True" />
+                        <TextBox x:Name="LaunchpadHotkeyBox" Width="280" IsReadOnly="True" />
                         <TextBlock Text="Stage Manager hotkey" />
-                        <TextBox x:Name="StageManagerHotkeyBox" Width="240" IsReadOnly="True" />
+                        <TextBox x:Name="StageManagerHotkeyBox" Width="280" IsReadOnly="True" />
                     </StackPanel>
+
+                    <StackPanel x:Name="ThemesSection" Spacing="12" Visibility="Collapsed">
+                        <Button Content="Backup settings" Click="OnBackup" />
+                    </StackPanel>
+
                     <Button x:Name="SaveButton" Content="Save" HorizontalAlignment="Left" Click="OnSave" />
                 </StackPanel>
             </ScrollViewer>

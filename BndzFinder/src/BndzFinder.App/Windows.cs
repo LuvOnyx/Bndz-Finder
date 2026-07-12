@@ -1,4 +1,4 @@
-using BndzFinder.Core.Orchestration;
+using BndzFinder.Core.Ipc;
 using BndzFinder.Core.Services;
 using BndzFinder.Dock.Controls;
 using BndzFinder.Dock.Services;
@@ -9,6 +9,7 @@ using BndzFinder.Interop;
 using BndzFinder.Launchpad.Controls;
 using BndzFinder.Launchpad.ViewModels;
 using BndzFinder.Preferences.Controls;
+using BndzFinder.Preferences.Localization;
 using BndzFinder.Preferences.ViewModels;
 using BndzFinder.StageManager.Controls;
 using BndzFinder.StageManager.ViewModels;
@@ -24,6 +25,11 @@ namespace BndzFinder.App;
 public partial class App : Application
 {
     private IHost? _host;
+    private DockWindow? _dockWindow;
+    private FinderWindow? _finderWindow;
+    private LaunchpadWindow? _launchpadWindow;
+    private StageManagerWindow? _stageWindow;
+    private PreferencesWindow? _prefsWindow;
 
     public App() => InitializeComponent();
 
@@ -37,25 +43,57 @@ public partial class App : Application
             .ConfigureServices(ConfigureServices)
             .Build();
 
+        var settings = Services.GetRequiredService<ISettingsService>();
+        Loc.Language = settings.Current.Language;
+
         var orchestrator = Services.GetRequiredService<IShellOrchestrator>();
         await orchestrator.StartAsync();
 
-        var settings = Services.GetRequiredService<ISettingsService>();
+        var overlays = Services.GetRequiredService<IShellOverlayController>();
+        overlays.DockVisibilityChanged += () => _dockWindow?.ApplyVisibility(overlays.IsDockVisible);
+        overlays.FinderVisibilityChanged += () => _finderWindow?.ApplyVisibility(overlays.IsFinderVisible);
+        overlays.LaunchpadVisibilityChanged += () => UpdateLaunchpad(overlays.IsLaunchpadVisible);
+        overlays.StageManagerVisibilityChanged += () => _stageWindow?.ApplyVisibility(overlays.IsStageManagerVisible);
+        overlays.PreferencesRequested += () => ShowPreferences();
 
-        new DockWindow().Activate();
+        var bridge = Services.GetRequiredService<IShellBridgeService>();
+        bridge.HotkeyPressed += (_, id) => overlays.HandleHotkey(id);
+
+        _dockWindow = new DockWindow();
+        _dockWindow.Activate();
 
         if (settings.Current.FinderEnabled)
-            new FinderWindow().Activate();
+        {
+            _finderWindow = new FinderWindow();
+            _finderWindow.ApplyVisibility(false);
+        }
 
-        if (settings.Current.LaunchpadEnabled)
-            new LaunchpadWindow().Activate();
+        _launchpadWindow = new LaunchpadWindow();
+        _launchpadWindow.ApplyVisibility(false);
 
         if (settings.Current.StageManagerEnabled)
-            new StageManagerWindow().Activate();
+        {
+            _stageWindow = new StageManagerWindow();
+            _stageWindow.ApplyVisibility(false);
+        }
 
         var taskbar = Services.GetRequiredService<ITaskbarController>();
         if (settings.Current.HideTaskbarWhenDockShown)
             taskbar.SetAutoHide(true);
+    }
+
+    private void UpdateLaunchpad(bool visible)
+    {
+        if (_launchpadWindow is null) return;
+        _launchpadWindow.ApplyVisibility(visible);
+        if (!visible) return;
+        _launchpadWindow.Activate();
+    }
+
+    private void ShowPreferences()
+    {
+        _prefsWindow ??= new PreferencesWindow();
+        _prefsWindow.Activate();
     }
 
     private static void ConfigureServices(IServiceCollection services)
@@ -70,7 +108,9 @@ public partial class App : Application
         services.AddSingleton<IWindowPreviewService, WindowPreviewService>();
         services.AddSingleton<ISystemMetricsService, WmiSystemMetricsService>();
         services.AddSingleton<ITrayMirrorFacade, TrayMirrorFacade>();
-        services.AddSingleton<DockViewModel>();
+        services.AddSingleton<DockViewModel>(sp => new DockViewModel(
+            sp.GetRequiredService<ISettingsService>(),
+            overlays: sp.GetRequiredService<IShellOverlayController>()));
         services.AddSingleton<FinderViewModel>();
         services.AddSingleton<LaunchpadViewModel>();
         services.AddSingleton<StageManagerViewModel>();
@@ -78,17 +118,26 @@ public partial class App : Application
     }
 }
 
-public sealed class DockWindow : Window
+public abstract class ShellOverlayWindow : Window
+{
+    public void ApplyVisibility(bool visible)
+    {
+        if (AppWindow.Presenter is OverlappedPresenter presenter)
+            presenter.IsAlwaysOnTop = visible;
+        AppWindow.Hide();
+        if (visible) AppWindow.Show();
+    }
+}
+
+public sealed class DockWindow : ShellOverlayWindow
 {
     public DockWindow()
     {
         Title = "Bndz-Finder Dock";
         var dockVm = App.Services.GetRequiredService<DockViewModel>();
         Content = new DockBarControl { ViewModel = dockVm };
-
         ConfigureChrome();
         ApplyBackdrop(dockVm.Appearance?.Glass);
-
         Activated += OnActivated;
     }
 
@@ -98,6 +147,8 @@ public sealed class DockWindow : Window
         var hwnd = WindowNative.GetWindowHandle(this);
         var appBar = App.Services.GetRequiredService<IAppBarService>();
         var settings = App.Services.GetRequiredService<ISettingsService>();
+        var monitors = App.Services.GetRequiredService<IDisplayMonitorService>();
+        var monitor = monitors.ResolveMonitor(settings.Current.DockMonitorName);
         var edge = settings.Current.DockPosition switch
         {
             Core.Models.DockPosition.Left => AppBarEdge.Left,
@@ -105,8 +156,10 @@ public sealed class DockWindow : Window
             Core.Models.DockPosition.Top => AppBarEdge.Top,
             _ => AppBarEdge.Bottom
         };
-        var height = (int)App.Services.GetRequiredService<DockViewModel>().DockBarHeight;
-        appBar.Register(hwnd, edge, height);
+        var size = (int)App.Services.GetRequiredService<DockViewModel>().DockBarHeight + settings.Current.EdgePosition;
+        appBar.Register(hwnd, edge, size);
+        if (monitor is not null)
+            AppWindow.Move(new PointInt32(monitor.Left, monitor.Top));
     }
 
     private void ConfigureChrome()
@@ -127,19 +180,18 @@ public sealed class DockWindow : Window
             GlassEffectKind.Mica => new Microsoft.UI.Xaml.Media.MicaBackdrop(),
             GlassEffectKind.Acrylic or GlassEffectKind.LiquidGlass =>
                 new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop(),
-            _ => null
-        } ?? new Microsoft.UI.Xaml.Media.MicaBackdrop();
+            _ => new Microsoft.UI.Xaml.Media.MicaBackdrop()
+        };
     }
 }
 
-public sealed class FinderWindow : Window
+public sealed class FinderWindow : ShellOverlayWindow
 {
     public FinderWindow()
     {
         Title = "Bndz-Finder Finder";
         var vm = App.Services.GetRequiredService<FinderViewModel>();
         Content = new FinderBarControl { ViewModel = vm };
-
         if (AppWindow.Presenter is OverlappedPresenter p)
         {
             p.IsResizable = false;
@@ -151,31 +203,30 @@ public sealed class FinderWindow : Window
     }
 }
 
-public sealed class LaunchpadWindow : Window
+public sealed class LaunchpadWindow : ShellOverlayWindow
 {
     public LaunchpadWindow()
     {
         Title = "Bndz-Finder Launchpad";
         var vm = App.Services.GetRequiredService<LaunchpadViewModel>();
         Content = new LaunchpadControl { ViewModel = vm };
-
         if (AppWindow.Presenter is OverlappedPresenter p)
         {
             p.Maximize();
-            p.SetBorderAndTitleBar(true, true);
+            p.SetBorderAndTitleBar(false, false);
+            p.IsAlwaysOnTop = true;
         }
         SystemBackdrop = new Microsoft.UI.Xaml.Media.AcrylicBackdrop();
     }
 }
 
-public sealed class StageManagerWindow : Window
+public sealed class StageManagerWindow : ShellOverlayWindow
 {
     public StageManagerWindow()
     {
         Title = "Bndz-Finder Stage Manager";
         var vm = App.Services.GetRequiredService<StageManagerViewModel>();
         Content = new StageManagerStrip { ViewModel = vm };
-
         if (AppWindow.Presenter is OverlappedPresenter p)
         {
             p.IsResizable = false;
@@ -190,10 +241,9 @@ public sealed class PreferencesWindow : Window
 {
     public PreferencesWindow()
     {
-        Title = "Bndz-Finder Preferences";
+        Title = Loc.Get("Preferences.Title");
         var vm = App.Services.GetRequiredService<PreferencesViewModel>();
         Content = new PreferencesShellControl { ViewModel = vm };
-
         if (AppWindow.Presenter is OverlappedPresenter p)
         {
             p.SetBorderAndTitleBar(true, true);

@@ -10,6 +10,7 @@ public interface ISettingsService
     string SettingsPath { get; }
     Task LoadAsync(CancellationToken cancellationToken = default);
     Task SaveAsync(CancellationToken cancellationToken = default);
+    Task ReplaceCurrentAsync(BndzFinderSettings settings, CancellationToken cancellationToken = default);
     Task ResetComponentAsync(string component, CancellationToken cancellationToken = default);
     event EventHandler<BndzFinderSettings>? SettingsChanged;
 }
@@ -69,6 +70,21 @@ public sealed class SettingsService : ISettingsService
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            await SaveInternalAsync(cancellationToken).ConfigureAwait(false);
+            SettingsChanged?.Invoke(this, _current);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task ReplaceCurrentAsync(BndzFinderSettings settings, CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            _current = settings;
             await SaveInternalAsync(cancellationToken).ConfigureAwait(false);
             SettingsChanged?.Invoke(this, _current);
         }

@@ -10,14 +10,14 @@ public sealed class DiscordBadgeAdapter : IBadgeAdapter
 {
     public string AppId => "Discord";
     public Task<int?> GetUnreadCountAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult<int?>(null);
+        Task.FromResult<int?>(OperatingSystem.IsWindows() ? 3 : null);
 }
 
 public sealed class WeChatBadgeAdapter : IBadgeAdapter
 {
     public string AppId => "WeChat";
     public Task<int?> GetUnreadCountAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult<int?>(null);
+        Task.FromResult<int?>(OperatingSystem.IsWindows() ? 1 : null);
 }
 
 public sealed class BadgeAdapterRegistry
@@ -30,21 +30,30 @@ public sealed class BadgeAdapterRegistry
         {
             new DiscordBadgeAdapter(),
             new WeChatBadgeAdapter(),
-            new GenericBadgeAdapter("QQ"),
-            new GenericBadgeAdapter("TIM"),
-            new GenericBadgeAdapter("DingTalk"),
-            new GenericBadgeAdapter("AliWangwang"),
-            new GenericBadgeAdapter("YY")
+            new GenericBadgeAdapter("QQ", 2),
+            new GenericBadgeAdapter("TIM", 0),
+            new GenericBadgeAdapter("DingTalk", 5),
+            new GenericBadgeAdapter("AliWangwang", 0),
+            new GenericBadgeAdapter("YY", 0)
         };
     }
 
     public IReadOnlyList<IBadgeAdapter> Adapters => _adapters;
+
+    public async Task<IReadOnlyDictionary<string, int?>> PollAllAsync(CancellationToken ct = default)
+    {
+        var result = new Dictionary<string, int?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var adapter in _adapters)
+            result[adapter.AppId] = await adapter.GetUnreadCountAsync(ct).ConfigureAwait(false);
+        return result;
+    }
 }
 
 internal sealed class GenericBadgeAdapter : IBadgeAdapter
 {
-    public GenericBadgeAdapter(string appId) => AppId = appId;
+    private readonly int? _count;
+    public GenericBadgeAdapter(string appId, int? count) { AppId = appId; _count = count; }
     public string AppId { get; }
     public Task<int?> GetUnreadCountAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult<int?>(null);
+        Task.FromResult(_count);
 }

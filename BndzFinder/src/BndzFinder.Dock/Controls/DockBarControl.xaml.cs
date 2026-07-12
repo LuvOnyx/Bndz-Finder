@@ -74,7 +74,7 @@ public sealed partial class DockBarControl : UserControl
             Canvas.SetLeft(control, iconVm.RenderX);
             Canvas.SetTop(control, iconVm.RenderY);
             control.PointerEntered += (_, _) => ViewModel.OnIconPointerEnteredCommand.Execute(iconVm.Layout.Index);
-            control.Tapped += (_, _) => ViewModel.LaunchItemCommand.Execute(iconVm.Layout.Item);
+            control.Tapped += (_, _) => ViewModel.HandleItemClickCommand.Execute(iconVm.Layout.Item);
             IconCanvas.Children.Add(control);
             _iconControls.Add(control);
         }

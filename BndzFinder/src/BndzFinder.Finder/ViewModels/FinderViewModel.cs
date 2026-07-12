@@ -38,8 +38,12 @@ public partial class FinderViewModel : ObservableObject
     public bool ShowWeather => _settings.Current.ShowWeather;
     public bool ShowAudio => _settings.Current.ShowAudio;
     public bool ShowBluetooth => _settings.Current.ShowBluetooth;
+    public bool ShowDisplay => _settings.Current.ShowDisplay;
     public bool ShowNotifications => _settings.Current.ShowNotifications;
     public bool ShowKeyboard => _settings.Current.ShowKeyboard;
+    public bool ShowMediaControl => _settings.Current.ShowMediaControl;
+    public bool ShowMicrophone => _settings.Current.ShowMicrophone;
+    public bool ShowLyrics => _settings.Current.ShowLyrics;
 
     public FinderViewModel(
         ISettingsService settings,
@@ -55,14 +59,34 @@ public partial class FinderViewModel : ObservableObject
         _settings.SettingsChanged += (_, _) =>
         {
             BarHeight = _settings.Current.FinderHeight;
-            OnPropertyChanged(nameof(ShowCpu));
-            OnPropertyChanged(nameof(ShowMemory));
+            NotifyWidgetVisibility();
         };
         _ = StartPollingAsync();
     }
 
     [RelayCommand]
-    public void OpenControlCenter(string panel) => _ = panel;
+    public void OpenControlCenter(string panel) => ControlCenterRequested?.Invoke(panel);
+
+    public event Action<string>? ControlCenterRequested;
+
+    private void NotifyWidgetVisibility()
+    {
+        OnPropertyChanged(nameof(ShowCpu));
+        OnPropertyChanged(nameof(ShowGpu));
+        OnPropertyChanged(nameof(ShowMemory));
+        OnPropertyChanged(nameof(ShowDisk));
+        OnPropertyChanged(nameof(ShowNetwork));
+        OnPropertyChanged(nameof(ShowBattery));
+        OnPropertyChanged(nameof(ShowWeather));
+        OnPropertyChanged(nameof(ShowAudio));
+        OnPropertyChanged(nameof(ShowBluetooth));
+        OnPropertyChanged(nameof(ShowDisplay));
+        OnPropertyChanged(nameof(ShowKeyboard));
+        OnPropertyChanged(nameof(ShowMediaControl));
+        OnPropertyChanged(nameof(ShowNotifications));
+        OnPropertyChanged(nameof(ShowMicrophone));
+        OnPropertyChanged(nameof(ShowLyrics));
+    }
 
     [RelayCommand]
     public void ClickTrayIcon(TrayProxyItem item) => _trayMirror.ForwardClick(item);

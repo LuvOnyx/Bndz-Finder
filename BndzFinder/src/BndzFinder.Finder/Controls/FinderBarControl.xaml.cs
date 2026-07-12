@@ -1,7 +1,9 @@
 using BndzFinder.Finder.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
+using Windows.UI;
 
 namespace BndzFinder.Finder.Controls;
 
@@ -10,6 +12,8 @@ public sealed partial class FinderBarControl : UserControl
     public static readonly DependencyProperty ViewModelProperty =
         DependencyProperty.Register(nameof(ViewModel), typeof(FinderViewModel), typeof(FinderBarControl),
             new PropertyMetadata(null, OnViewModelChanged));
+
+    private Flyout? _controlCenterFlyout;
 
     public FinderViewModel? ViewModel
     {
@@ -27,9 +31,9 @@ public sealed partial class FinderBarControl : UserControl
     {
         var style = new Style { TargetType = typeof(Button) };
         style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(6, 2, 6, 2)));
-        style.Setters.Add(new Setter(Control.BackgroundProperty, new SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0))));
+        style.Setters.Add(new Setter(Control.BackgroundProperty, new SolidColorBrush(Color.FromArgb(0, 0, 0, 0))));
         style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
-        style.Setters.Add(new Setter(Control.ForegroundProperty, new SolidColorBrush(Windows.UI.Color.FromArgb(230, 255, 255, 255))));
+        style.Setters.Add(new Setter(Control.ForegroundProperty, new SolidColorBrush(Color.FromArgb(230, 255, 255, 255))));
         style.Setters.Add(new Setter(Control.CornerRadiusProperty, new CornerRadius(6)));
         return style;
     }
@@ -55,17 +59,41 @@ public sealed partial class FinderBarControl : UserControl
             Height = ViewModel.BarHeight;
 
         CpuWidget.Visibility = ViewModel.ShowCpu ? Visibility.Visible : Visibility.Collapsed;
+        GpuWidget.Visibility = ViewModel.ShowGpu ? Visibility.Visible : Visibility.Collapsed;
         MemoryWidget.Visibility = ViewModel.ShowMemory ? Visibility.Visible : Visibility.Collapsed;
+        DiskWidget.Visibility = ViewModel.ShowDisk ? Visibility.Visible : Visibility.Collapsed;
         BatteryWidget.Visibility = ViewModel.ShowBattery ? Visibility.Visible : Visibility.Collapsed;
         NetworkWidget.Visibility = ViewModel.ShowNetwork ? Visibility.Visible : Visibility.Collapsed;
+        WeatherWidget.Visibility = ViewModel.ShowWeather ? Visibility.Visible : Visibility.Collapsed;
         AudioWidget.Visibility = ViewModel.ShowAudio ? Visibility.Visible : Visibility.Collapsed;
+        BluetoothWidget.Visibility = ViewModel.ShowBluetooth ? Visibility.Visible : Visibility.Collapsed;
+        DisplayWidget.Visibility = ViewModel.ShowDisplay ? Visibility.Visible : Visibility.Collapsed;
+        KeyboardWidget.Visibility = ViewModel.ShowKeyboard ? Visibility.Visible : Visibility.Collapsed;
+        MediaWidget.Visibility = ViewModel.ShowMediaControl ? Visibility.Visible : Visibility.Collapsed;
+        NotificationsWidget.Visibility = ViewModel.ShowNotifications ? Visibility.Visible : Visibility.Collapsed;
 
         CpuText.Text = $"CPU {ViewModel.CpuUsage:F0}%";
+        GpuText.Text = $"GPU {ViewModel.GpuUsage:F0}%";
         MemoryText.Text = $"RAM {ViewModel.MemoryUsage:F0}%";
+        DiskText.Text = $"Disk {ViewModel.DiskUsage:F0}%";
         BatteryText.Text = $"{ViewModel.BatteryPercent}%";
+        WeatherText.Text = ViewModel.WeatherText;
+        KeyboardText.Text = ViewModel.KeyboardLayout;
         ClockText.Text = ViewModel.ClockText;
         DateText.Text = ViewModel.DateText;
-
         TrayIcons.ItemsSource = ViewModel.TrayIcons;
     }
+
+    private void ShowControlCenter(string panel, FrameworkElement anchor)
+    {
+        _controlCenterFlyout ??= new Flyout { Placement = FlyoutPlacementMode.Bottom };
+        _controlCenterFlyout.Content = new ControlCenterFlyout { Panel = panel };
+        _controlCenterFlyout.ShowAt(anchor);
+    }
+
+    private void OnAudioClick(object sender, RoutedEventArgs e) => ShowControlCenter("audio", AudioWidget);
+    private void OnBluetoothClick(object sender, RoutedEventArgs e) => ShowControlCenter("bluetooth", BluetoothWidget);
+    private void OnDisplayClick(object sender, RoutedEventArgs e) => ShowControlCenter("display", DisplayWidget);
+    private void OnCpuClick(object sender, RoutedEventArgs e) => ViewModel?.OpenControlCenterCommand.Execute("cpu");
+    private void OnCalendarClick(object sender, RoutedEventArgs e) => ViewModel?.OpenControlCenterCommand.Execute("calendar");
 }

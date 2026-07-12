@@ -18,19 +18,19 @@ public sealed class HotkeySyncService : IHotkeySyncService
 {
     public void ApplyFromSettings(BndzFinderSettings settings, IHotkeyBindingRegistrar registrar)
     {
-        ApplyBinding(registrar, settings.DockHotkey, () => { });
-        ApplyBinding(registrar, settings.FinderHotkey, () => { });
-        ApplyBinding(registrar, settings.LaunchpadHotkey, () => { });
-        ApplyBinding(registrar, settings.StageManagerHotkey, () => { });
+        ApplyBinding(registrar, settings.DockHotkey);
+        ApplyBinding(registrar, settings.FinderHotkey);
+        ApplyBinding(registrar, settings.LaunchpadHotkey);
+        ApplyBinding(registrar, settings.StageManagerHotkey);
     }
 
-    private static void ApplyBinding(IHotkeyBindingRegistrar registrar, HotkeyBinding binding, Action handler)
+    private static void ApplyBinding(IHotkeyBindingRegistrar registrar, HotkeyBinding binding)
     {
         if (string.IsNullOrWhiteSpace(binding.Key))
         {
             registrar.Unregister(binding.Id);
             return;
         }
-        registrar.Register(binding, handler);
+        registrar.Register(binding, () => { });
     }
 }

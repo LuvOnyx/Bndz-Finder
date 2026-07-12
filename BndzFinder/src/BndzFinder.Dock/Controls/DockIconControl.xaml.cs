@@ -79,5 +79,19 @@ public sealed partial class DockIconControl : UserControl
             Width = 2;
             Height = size;
         }
+
+        if (vm.BadgeCount is > 0)
+        {
+            BadgeLayer.Visibility = Visibility.Visible;
+            BadgeText.Text = vm.BadgeCount > 99 ? "99+" : vm.BadgeCount.ToString();
+        }
+        else BadgeLayer.Visibility = Visibility.Collapsed;
+
+        if (vm.Progress > 0)
+        {
+            ProgressLayer.Visibility = Visibility.Visible;
+            ProgressFill.Width = size * vm.Progress;
+        }
+        else ProgressLayer.Visibility = Visibility.Collapsed;
     }
 }
