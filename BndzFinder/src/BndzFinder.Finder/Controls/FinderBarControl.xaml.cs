@@ -82,6 +82,6 @@ public sealed partial class FinderBarControl : UserControl
     private void OnAudioClick(object sender, RoutedEventArgs e) => ShowControlCenter("audio", AudioWidget);
     private void OnBluetoothClick(object sender, RoutedEventArgs e) => ShowControlCenter("bluetooth", BluetoothWidget);
     private void OnDisplayClick(object sender, RoutedEventArgs e) => ShowControlCenter("display", DisplayWidget);
-    private void OnCpuClick(object sender, RoutedEventArgs e) => ViewModel?.OpenControlCenterCommand.Execute("cpu");
-    private void OnCalendarClick(object sender, RoutedEventArgs e) => ViewModel?.OpenControlCenterCommand.Execute("calendar");
+    private void OnCpuClick(object sender, RoutedEventArgs e) => ViewModel?.OpenControlCenter("cpu");
+    private void OnCalendarClick(object sender, RoutedEventArgs e) => ViewModel?.OpenControlCenter("calendar");
 }

@@ -96,7 +96,7 @@ public sealed partial class PreferencesShellControl : UserControl
         ViewModel.Settings.AccentColor = AccentPicker.SelectedHex;
         ViewModel.Settings.DockOpacity = DockOpacitySlider.Value / 100;
         ViewModel.Settings.DockCornerRadius = CornerRadiusSlider.Value;
-        ViewModel.SetGlassTintCommand.Execute(GlassTintPicker.SelectedHex);
+        ViewModel.SetGlassTint(GlassTintPicker.SelectedHex);
         ViewModel.SetWidgetEnabled("cpu", WidgetCpu.IsOn);
         ViewModel.SetWidgetEnabled("gpu", WidgetGpu.IsOn);
         ViewModel.SetWidgetEnabled("memory", WidgetMemory.IsOn);
@@ -110,13 +110,13 @@ public sealed partial class PreferencesShellControl : UserControl
         ViewModel.SetWidgetEnabled("keyboard", WidgetKeyboard.IsOn);
         ViewModel.SetWidgetEnabled("media", WidgetMedia.IsOn);
         ViewModel.SetWidgetEnabled("notifications", WidgetNotifications.IsOn);
-        await ViewModel.SaveCommand.ExecuteAsync(null);
+        await ViewModel.SaveAsync();
     }
 
     private async void OnBackup(object sender, RoutedEventArgs e)
     {
         if (ViewModel is null) return;
-        await ViewModel.BackupCommand.ExecuteAsync(null);
+        await ViewModel.BackupAsync();
     }
 
     private static string FormatHotkey(HotkeyBinding binding)

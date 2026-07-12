@@ -19,9 +19,9 @@ public sealed partial class LaunchpadControl : UserControl
     public LaunchpadControl()
     {
         InitializeComponent();
-        SearchBox.TextChanged += (_, e) =>
+        SearchBox.TextChanged += (_, _) =>
         {
-            if (ViewModel is not null) ViewModel.SearchQuery = e.NewText;
+            if (ViewModel is not null) ViewModel.SearchQuery = SearchBox.Text;
         };
     }
 

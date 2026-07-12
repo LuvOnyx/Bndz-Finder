@@ -8,14 +8,15 @@
     <EnableMsixTooling>false</EnableMsixTooling>
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <NuGetPackageRoot Condition="'$(NuGetPackageRoot)' == ''">$(UserProfile)\.nuget\packages\</NuGetPackageRoot>
+    <_WinSdkBuildToolsRoot>$(NuGetPackageRoot)microsoft.windows.sdk.buildtools\10.0.26100.4654\</_WinSdkBuildToolsRoot>
+    <_AppxToolsV18>$(_WinSdkBuildToolsRoot)tools\MSBuild\Microsoft\VisualStudio\v18.0\AppxPackage\</_AppxToolsV18>
+    <_AppxToolsV17>$(_WinSdkBuildToolsRoot)tools\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\</_AppxToolsV17>
+    <AppxPackageToolsPath Condition="Exists('$(_AppxToolsV18)')">$(_AppxToolsV18)</AppxPackageToolsPath>
+    <AppxPackageToolsPath Condition="'$(AppxPackageToolsPath)' == '' AND Exists('$(_AppxToolsV17)')">$(_AppxToolsV17)</AppxPackageToolsPath>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
   </ItemGroup>
-  <PropertyGroup Condition="'$(PkgMicrosoft_Windows_SDK_BuildTools)' != ''">
-    <_AppxToolsV18>$(PkgMicrosoft_Windows_SDK_BuildTools)\tools\MSBuild\Microsoft\VisualStudio\v18.0\AppxPackage\</_AppxToolsV18>
-    <_AppxToolsV17>$(PkgMicrosoft_Windows_SDK_BuildTools)\tools\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\</_AppxToolsV17>
-    <AppxPackageToolsPath Condition="Exists('$(_AppxToolsV18)')">$(_AppxToolsV18)</AppxPackageToolsPath>
-    <AppxPackageToolsPath Condition="'$(AppxPackageToolsPath)' == ''">$(_AppxToolsV17)</AppxPackageToolsPath>
-  </PropertyGroup>
 </Project>
