@@ -5,7 +5,10 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <Platforms>x64</Platforms>
     <UseWinUI>true</UseWinUI>
-    <EnableMsixTooling>false</EnableMsixTooling>
+    <!-- Required for dotnet build without VS Appx workload; uses CLI-compatible PRI tasks. -->
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <EnableDefaultMsixItems>false</EnableDefaultMsixItems>
+    <EnableDefaultPriItems Condition="'$(OutputType)' != 'WinExe'">false</EnableDefaultPriItems>
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <NuGetPackageRoot Condition="'$(NuGetPackageRoot)' == ''">$(UserProfile)\.nuget\packages\</NuGetPackageRoot>
@@ -15,9 +18,11 @@
     <AppxPackageToolsPath Condition="Exists('$(_AppxToolsV18)')">$(_AppxToolsV18)</AppxPackageToolsPath>
     <AppxPackageToolsPath Condition="'$(AppxPackageToolsPath)' == '' AND Exists('$(_AppxToolsV17)')">$(_AppxToolsV17)</AppxPackageToolsPath>
     <!-- Class libraries must not run PRI packaging; merged at BndzFinder.App (WinExe). -->
-    <MrtCoreEnablePriGeneration Condition="'$(OutputType)' != 'WinExe'">false</MrtCoreEnablePriGeneration>
-    <GenerateLibraryLayout Condition="'$(OutputType)' != 'WinExe'">false</GenerateLibraryLayout>
-    <GenerateProjectPriFile Condition="'$(OutputType)' != 'WinExe'">false</GenerateProjectPriFile>
+    <MrtCoreEnablePriGeneration>false</MrtCoreEnablePriGeneration>
+    <MrtCoreEnablePriGeneration Condition="'$(OutputType)' == 'WinExe'">true</MrtCoreEnablePriGeneration>
+    <GenerateLibraryLayout>false</GenerateLibraryLayout>
+    <GenerateProjectPriFile>false</GenerateProjectPriFile>
+    <GenerateProjectPriFile Condition="'$(OutputType)' == 'WinExe'">true</GenerateProjectPriFile>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Partial-property [ObservableProperty] does not source-generate on WinUI+SDK10 yet; field pattern is used. -->
     <NoWarn>$(NoWarn);MVVMTK0045</NoWarn>

@@ -183,7 +183,7 @@ dotnet nuget locals all --clear
 | `NU1101` Unable to find package | Bad package ID or wrong NuGet feed — **not WiFi**. This repo uses `nuget.org` only via `BndzFinder/nuget.config` |
 | `NU1301` / `No such host is known` (nuget.org) | **Network dropped or DNS issue.** Build auto-retries; reconnect WiFi and leave `.\run.cmd` running |
 | `MSB3073` XamlCompiler exited with code 1 | Invalid XAML — e.g. `UniformGrid` (not in WinUI 3), wrong `AcrylicBrush` placement. Fixed in latest branch |
-| `MSB4062` ExpandPriContent / Pri.Tasks.dll | WinUI **class libraries** must set `MrtCoreEnablePriGeneration=false` (see `Directory.Build.Windows.props` + `Directory.Build.targets`). Appx tools path is routed via `Microsoft.Windows.SDK.BuildTools` for the `WinExe` app only. |
+| `MSB4062` ExpandPriContent / Pri.Tasks.dll | Set `EnableMsixTooling=true` in `Directory.Build.Windows.props` (dotnet-build-compatible PRI tasks). Class libraries also import `WinUiClassLibrary.props` with `MrtCoreEnablePriGeneration=false`. Only `BndzFinder.App` (WinExe) generates PRI. |
 | `CS9035` Required member not set | Remove `required` from types WinUI XAML activates (`DockIconViewModel`, etc.) — XAML codegen uses parameterless construction. |
 | `MVVMTK0045` | WinUI ViewModels use field-backed `[ObservableProperty]` (partial-property pattern fails on SDK 10 WinUI builds with CS9248). Warning suppressed in `Directory.Build.Windows.props`. |
 | `NU1504` duplicate packages | Central versions in `Directory.Packages.props`; `CommunityToolkit.Mvvm` only in `Directory.Build.Windows.props`. |

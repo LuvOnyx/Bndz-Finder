@@ -1,6 +1,5 @@
 using System.Runtime.InteropServices;
 using Microsoft.UI.Xaml.Media.Imaging;
-using Windows.Storage.Streams;
 
 namespace BndzFinder.Dock.Helpers;
 
@@ -42,7 +41,7 @@ public static class BgraBitmapHelper
         var access = (IBufferByteAccess)buffer;
         fixed (byte* src = pixels)
         {
-            Buffer.MemoryCopy(src, access.Buffer(), length, length);
+            System.Buffer.MemoryCopy(src, access.Buffer(), length, length);
         }
         bitmap.Invalidate();
     }
