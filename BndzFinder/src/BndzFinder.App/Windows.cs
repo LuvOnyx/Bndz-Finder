@@ -43,62 +43,70 @@ public partial class App : Application
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _host = Host.CreateDefaultBuilder()
-            .ConfigureServices(ConfigureServices)
-            .Build();
-
-        var settings = Services.GetRequiredService<ISettingsService>();
-        Loc.Language = settings.Current.Language;
-
-        var orchestrator = Services.GetRequiredService<IShellOrchestrator>();
-        await orchestrator.StartAsync();
-
-        var overlays = Services.GetRequiredService<IShellOverlayController>();
-        var dockVm = Services.GetRequiredService<DockViewModel>();
-        var finderVm = Services.GetRequiredService<FinderViewModel>();
-        var launchpadVm = Services.GetRequiredService<LaunchpadViewModel>();
-        var stageVm = Services.GetRequiredService<StageManagerViewModel>();
-
-        overlays.DockVisibilityChanged += () => _dockWindow?.ApplyVisibility(overlays.IsDockVisible);
-        overlays.FinderVisibilityChanged += () => _finderWindow?.ApplyVisibility(overlays.IsFinderVisible);
-        overlays.LaunchpadVisibilityChanged += () => UpdateLaunchpad(overlays.IsLaunchpadVisible);
-        overlays.StageManagerVisibilityChanged += () => _stageWindow?.ApplyVisibility(overlays.IsStageManagerVisible);
-        overlays.PreferencesRequested += () => ShowPreferences();
-
-        var bridge = Services.GetRequiredService<IShellBridgeService>();
-        bridge.HotkeyPressed += (_, id) => overlays.HandleHotkey(id);
-        bridge.TrayIconsUpdated += (_, json) => finderVm.ApplyTrayIconsFromPayload(json);
-        bridge.WindowListUpdated += (_, json) => stageVm.ApplyWindowsFromPayload(json);
-
-        settings.SettingsChanged += (_, _) =>
+        try
         {
+            _host = Host.CreateDefaultBuilder()
+                .ConfigureServices(ConfigureServices)
+                .Build();
+
+            var settings = Services.GetRequiredService<ISettingsService>();
             Loc.Language = settings.Current.Language;
-            dockVm.RefreshAll();
-            finderVm.NotifyWidgetVisibility();
-            _ = bridge.NotifySettingsReloadAsync();
-        };
 
-        _dockWindow = new DockWindow();
-        _dockWindow.Activate();
+            var orchestrator = Services.GetRequiredService<IShellOrchestrator>();
+            await orchestrator.StartAsync();
 
-        if (settings.Current.FinderEnabled)
-        {
-            _finderWindow = new FinderWindow();
-            _finderWindow.ApplyVisibility(false);
+            var overlays = Services.GetRequiredService<IShellOverlayController>();
+            var dockVm = Services.GetRequiredService<DockViewModel>();
+            var finderVm = Services.GetRequiredService<FinderViewModel>();
+            var launchpadVm = Services.GetRequiredService<LaunchpadViewModel>();
+            var stageVm = Services.GetRequiredService<StageManagerViewModel>();
+
+            overlays.DockVisibilityChanged += () => _dockWindow?.ApplyVisibility(overlays.IsDockVisible);
+            overlays.FinderVisibilityChanged += () => _finderWindow?.ApplyVisibility(overlays.IsFinderVisible);
+            overlays.LaunchpadVisibilityChanged += () => UpdateLaunchpad(overlays.IsLaunchpadVisible);
+            overlays.StageManagerVisibilityChanged += () => _stageWindow?.ApplyVisibility(overlays.IsStageManagerVisible);
+            overlays.PreferencesRequested += () => ShowPreferences();
+
+            var bridge = Services.GetRequiredService<IShellBridgeService>();
+            bridge.HotkeyPressed += (_, id) => overlays.HandleHotkey(id);
+            bridge.TrayIconsUpdated += (_, json) => finderVm.ApplyTrayIconsFromPayload(json);
+            bridge.WindowListUpdated += (_, json) => stageVm.ApplyWindowsFromPayload(json);
+
+            settings.SettingsChanged += (_, _) =>
+            {
+                Loc.Language = settings.Current.Language;
+                dockVm.RefreshAll();
+                finderVm.NotifyWidgetVisibility();
+                _ = bridge.NotifySettingsReloadAsync();
+            };
+
+            _dockWindow = new DockWindow();
+            _dockWindow.Activate();
+            _dockWindow.ApplyVisibility(overlays.IsDockVisible && dockVm.IsVisible);
+
+            if (settings.Current.FinderEnabled)
+            {
+                _finderWindow = new FinderWindow();
+                _finderWindow.ApplyVisibility(false);
+            }
+
+            _launchpadWindow = new LaunchpadWindow();
+            _launchpadWindow.ApplyVisibility(false);
+
+            if (settings.Current.StageManagerEnabled)
+            {
+                _stageWindow = new StageManagerWindow();
+                _stageWindow.ApplyVisibility(false);
+            }
+
+            var taskbar = Services.GetRequiredService<ITaskbarController>();
+            if (settings.Current.HideTaskbarWhenDockShown)
+                taskbar.SetAutoHide(true);
         }
-
-        _launchpadWindow = new LaunchpadWindow();
-        _launchpadWindow.ApplyVisibility(false);
-
-        if (settings.Current.StageManagerEnabled)
+        catch (Exception ex)
         {
-            _stageWindow = new StageManagerWindow();
-            _stageWindow.ApplyVisibility(false);
+            StartupErrorReporter.Report(ex);
         }
-
-        var taskbar = Services.GetRequiredService<ITaskbarController>();
-        if (settings.Current.HideTaskbarWhenDockShown)
-            taskbar.SetAutoHide(true);
     }
 
     private void UpdateLaunchpad(bool visible)
@@ -137,6 +145,7 @@ public partial class App : Application
         services.AddSingleton<IWindowPreviewService, WindowPreviewService>();
         services.AddSingleton<IWindowCaptureService, WindowCaptureService>();
         services.AddSingleton<ISystemMetricsService, WmiSystemMetricsService>();
+        services.AddSingleton<TrayIconMirrorService>();
         services.AddSingleton<ITrayMirrorFacade, TrayMirrorFacade>();
         services.AddSingleton<DockViewModel>(sp => new DockViewModel(
             sp.GetRequiredService<ISettingsService>(),
@@ -167,24 +176,42 @@ public abstract class ShellOverlayWindow : Window
     {
         if (AppWindow.Presenter is OverlappedPresenter presenter)
             presenter.IsAlwaysOnTop = visible;
-        AppWindow.Hide();
-        if (visible) AppWindow.Show();
+
+        if (visible)
+            AppWindow.Show();
+        else
+            AppWindow.Hide();
     }
 }
 
 public sealed class DockWindow : ShellOverlayWindow
 {
+    private readonly DockViewModel _dockVm;
     private readonly DispatcherTimer _edgeTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
+    private bool _appBarRegistered;
 
     public DockWindow()
     {
         Title = "Bndz-Finder Dock";
-        var dockVm = App.Services.GetRequiredService<DockViewModel>();
-        Content = new DockBarControl { ViewModel = dockVm };
+        _dockVm = App.Services.GetRequiredService<DockViewModel>();
+        Content = new DockBarControl { ViewModel = _dockVm };
         ConfigureChrome();
-        ApplyBackdrop(dockVm.Appearance?.Glass);
+        ApplyBackdrop(_dockVm.Appearance?.Glass);
         Activated += OnActivated;
-        _edgeTimer.Tick += (_, _) => UpdateEdgeActivation(dockVm);
+        _dockVm.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName is nameof(DockViewModel.DockBarHeight)
+                or nameof(DockViewModel.Appearance)
+                or nameof(DockViewModel.IsVisible))
+            {
+                if (args.PropertyName is nameof(DockViewModel.Appearance))
+                    ApplyBackdrop(_dockVm.Appearance?.Glass);
+                if (_appBarRegistered)
+                    PositionOnAppBar();
+                ApplyVisibility(_dockVm.IsVisible);
+            }
+        };
+        _edgeTimer.Tick += (_, _) => UpdateEdgeActivation(_dockVm);
         _edgeTimer.Start();
     }
 
@@ -210,11 +237,15 @@ public sealed class DockWindow : ShellOverlayWindow
     private void OnActivated(object sender, WindowActivatedEventArgs args)
     {
         if (args.WindowActivationState == WindowActivationState.Deactivated) return;
+        _appBarRegistered = true;
+        PositionOnAppBar();
+    }
+
+    private void PositionOnAppBar()
+    {
         var hwnd = WindowNative.GetWindowHandle(this);
         var appBar = App.Services.GetRequiredService<IAppBarService>();
         var settings = App.Services.GetRequiredService<ISettingsService>();
-        var monitors = App.Services.GetRequiredService<IDisplayMonitorService>();
-        var monitor = monitors.ResolveMonitor(settings.Current.DockMonitorName);
         var edge = settings.Current.DockPosition switch
         {
             Core.Models.DockPosition.Left => AppBarEdge.Left,
@@ -222,10 +253,16 @@ public sealed class DockWindow : ShellOverlayWindow
             Core.Models.DockPosition.Top => AppBarEdge.Top,
             _ => AppBarEdge.Bottom
         };
-        var size = (int)App.Services.GetRequiredService<DockViewModel>().DockBarHeight + settings.Current.EdgePosition;
-        appBar.Register(hwnd, edge, size);
-        if (monitor is not null)
-            AppWindow.Move(new PointInt32(monitor.Left, monitor.Top));
+        var size = Math.Max(48, (int)_dockVm.DockBarHeight + settings.Current.EdgePosition);
+        var rect = appBar.Register(hwnd, edge, size);
+        if (rect.Right > rect.Left && rect.Bottom > rect.Top)
+        {
+            AppWindow.MoveAndResize(new RectInt32(
+                rect.Left,
+                rect.Top,
+                rect.Right - rect.Left,
+                rect.Bottom - rect.Top));
+        }
     }
 
     private void ConfigureChrome()
@@ -333,4 +370,29 @@ public sealed class PreferencesWindow : Window
         }
         SystemBackdrop = new MicaBackdrop();
     }
+}
+
+internal static class StartupErrorReporter
+{
+    public static void Report(Exception ex)
+    {
+        var logDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "BndzFinder");
+        Directory.CreateDirectory(logDir);
+        var logPath = Path.Combine(logDir, "startup.log");
+        File.WriteAllText(logPath, $"[{DateTime.Now:O}]{Environment.NewLine}{ex}{Environment.NewLine}");
+
+        if (OperatingSystem.IsWindows())
+        {
+            _ = MessageBox(
+                nint.Zero,
+                $"{ex.Message}{Environment.NewLine}{Environment.NewLine}Details: {logPath}",
+                "Bndz-Finder could not start",
+                0x10); // MB_ICONERROR
+        }
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern int MessageBox(nint hWnd, string text, string caption, uint type);
 }

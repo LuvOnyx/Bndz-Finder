@@ -76,12 +76,21 @@ Start-Sleep -Seconds 3
 
 Write-Host "Starting Bndz-Finder App (dock UI)..." -ForegroundColor Cyan
 Write-Host "Close both terminal windows to exit." -ForegroundColor Yellow
+Write-Host "If nothing appears, check %LOCALAPPDATA%\BndzFinder\startup.log" -ForegroundColor DarkGray
 Push-Location $ProjectRoot
 try {
     dotnet run --project $AppProj -c $Configuration
+    $appExit = $LASTEXITCODE
 }
 finally {
     Pop-Location
+}
+
+if ($appExit -ne 0) {
+    Write-Host ""
+    Write-Host "Bndz-Finder App exited with code $appExit." -ForegroundColor Red
+    Write-Host "Common causes: another instance running, or a missing dependency." -ForegroundColor Red
+    Write-Host "Log: $env:LOCALAPPDATA\BndzFinder\startup.log" -ForegroundColor Yellow
 }
 
 if (-not $hostJob.HasExited) {

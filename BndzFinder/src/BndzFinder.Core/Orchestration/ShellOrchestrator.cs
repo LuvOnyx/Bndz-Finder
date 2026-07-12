@@ -35,7 +35,8 @@ public sealed class ShellOrchestrator : IShellOrchestrator
     {
         if (!_singleInstance.TryAcquire("BndzFinder.App"))
         {
-            throw new InvalidOperationException("Another instance of Bndz-Finder is already running.");
+            throw new InvalidOperationException(
+                "Another instance of Bndz-Finder is already running. Close it or delete %TEMP%\\BndzFinder.App.lock if no instance is open.");
         }
 
         await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
