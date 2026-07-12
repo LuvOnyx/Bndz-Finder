@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\Directory.Build.Windows.props" />
+  <PropertyGroup>
+    <RootNamespace>BndzFinder.Launchpad</RootNamespace>
+    <Description>Full-screen Launchpad app grid.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BndzFinder.Core\BndzFinder.Core.csproj" />
+    <ProjectReference Include="..\BndzFinder.Shell\BndzFinder.Shell.csproj" />
+  </ItemGroup>
+</Project>

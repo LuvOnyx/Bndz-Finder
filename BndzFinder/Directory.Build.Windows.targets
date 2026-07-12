@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <!-- Reinforce PRI disable for WinUI class libraries (also set in Directory.Build.Windows.props). -->
+    <MrtCoreEnablePriGeneration Condition="'$(OutputType)' != 'WinExe'">false</MrtCoreEnablePriGeneration>
+    <GenerateLibraryLayout Condition="'$(OutputType)' != 'WinExe'">false</GenerateLibraryLayout>
+  </PropertyGroup>
+</Project>
