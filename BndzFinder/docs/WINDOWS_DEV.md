@@ -179,7 +179,8 @@ dotnet nuget locals all --clear
 | `dotnet not found` | Install .NET 9 SDK |
 | `NU1101` Unable to find package | Bad package ID or wrong NuGet feed — **not WiFi**. This repo uses `nuget.org` only via `BndzFinder/nuget.config` |
 | `NU1301` / `No such host is known` (nuget.org) | **Network dropped or DNS issue.** Build auto-retries; reconnect WiFi and leave `.\run.cmd` running |
-| SDK 10 active (`sdk\10.0.201` in errors) | **Install .NET 9 SDK** — WinUI breaks on SDK 10 (MSB4062 Pri tasks, XamlCompiler). Verify: `dotnet --list-sdks` shows `9.0.x`, then `dotnet --version` in `BndzFinder\` shows 9.x |
-| `MVVMTK0007` / `SetWidgetEnabledCommand` missing | Fixed in latest branch — `git pull` and rebuild |
+| `MSB3073` XamlCompiler exited with code 1 | Invalid XAML — e.g. `UniformGrid` (not in WinUI 3), wrong `AcrylicBrush` placement. Fixed in latest branch |
+| `MSB4062` ExpandPriContent / Pri.Tasks.dll | Project routes packaging tasks through `Microsoft.Windows.SDK.BuildTools` in `Directory.Build.Windows.props`. Also use .NET 9 SDK via `global.json` |
+| `MVVMTK0045` | WinUI ViewModels must use `[ObservableProperty] public partial T Prop { get; set; }` — fixed across all WinUI VMs |
 | WinUI build fails | Install Windows App SDK / VS Build Tools with C++ workload |
 | No dock visible | Ensure ShellHost is running; check single-instance lock in `%TEMP%` |

@@ -49,38 +49,6 @@ function Test-WindowsAppSdkCached {
     return Test-Path $packageRoot
 }
 
-function Assert-DotNet9Sdk {
-    Push-Location $Root
-    try {
-        $active = (dotnet --version).Trim()
-        $sdks = dotnet --list-sdks
-        $has9 = @($sdks | Where-Object { $_ -match '^\s*9\.0\.' }).Count -gt 0
-
-        if ($active -match '^10\.') {
-            Write-Host "ERROR: Active SDK is $active — WinUI 3 builds require .NET 9 SDK." -ForegroundColor Red
-            Write-Host ""
-            if (-not $has9) {
-                Write-Host "Install .NET 9 SDK (keep SDK 10 if you want):" -ForegroundColor Yellow
-                Write-Host "  https://dotnet.microsoft.com/download/dotnet/9.0" -ForegroundColor Cyan
-            }
-            else {
-                Write-Host ".NET 9 SDK is installed but global.json is not selecting it." -ForegroundColor Yellow
-                Write-Host "Run builds from the BndzFinder folder and verify:" -ForegroundColor Yellow
-                Write-Host "  cd $Root" -ForegroundColor DarkGray
-                Write-Host "  dotnet --version    # should show 9.0.x" -ForegroundColor DarkGray
-            }
-            Write-Host ""
-            Write-Host "SDK 10 breaks WinUI PRI/XAML tasks (MSB4062 / MSB3073)." -ForegroundColor Yellow
-            exit 1
-        }
-
-        Write-Host "Using .NET SDK $active" -ForegroundColor DarkGray
-    }
-    finally {
-        Pop-Location
-    }
-}
-
 function Test-TransientNetworkError {
     param([string]$Output)
 
@@ -211,8 +179,6 @@ if (-not (Test-Path $Sln)) {
 }
 
 Write-Host "Project root: $Root" -ForegroundColor DarkGray
-Assert-DotNet9Sdk
-Write-Host ""
 
 if (-not (Test-NuGetConnectivity)) {
     if (Test-WindowsAppSdkCached) {

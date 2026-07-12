@@ -28,9 +28,14 @@ public partial class PreferencesViewModel : ObservableObject
     private readonly IBackupService _backup;
     private readonly IDisplayMonitorService _monitors;
 
-    [ObservableProperty] private PreferencesSection _selectedSection = PreferencesSection.General;
-    [ObservableProperty] private string _glassTintColor = "#101010";
-    [ObservableProperty] private IReadOnlyList<string> _availableMonitors = [];
+    [ObservableProperty]
+    public partial PreferencesSection SelectedSection { get; set; } = PreferencesSection.General;
+
+    [ObservableProperty]
+    public partial string GlassTintColor { get; set; } = "#101010";
+
+    [ObservableProperty]
+    public partial IReadOnlyList<string> AvailableMonitors { get; set; } = [];
 
     public BndzFinder.Core.Settings.BndzFinderSettings Settings => _settings.Current;
 

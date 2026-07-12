@@ -7,13 +7,13 @@
             Background="#CC1A1A1A" BorderBrush="#20FFFFFF" BorderThickness="1">
         <Grid>
             <Canvas x:Name="FanCanvas" Visibility="Collapsed" />
-            <ItemsControl x:Name="GridList" Visibility="Collapsed">
-                <ItemsControl.ItemsPanel>
+            <GridView x:Name="GridList" Visibility="Collapsed" SelectionMode="None" IsItemClickEnabled="True">
+                <GridView.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <UniformGrid Columns="4" />
+                        <ItemsWrapGrid Orientation="Horizontal" MaximumRowsOrColumns="4" />
                     </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
+                </GridView.ItemsPanel>
+                <GridView.ItemTemplate>
                     <DataTemplate>
                         <Button Padding="4" Background="Transparent" BorderThickness="0">
                             <StackPanel Spacing="4" Width="64">
@@ -23,8 +23,8 @@
                             </StackPanel>
                         </Button>
                     </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                </GridView.ItemTemplate>
+            </GridView>
             <ListView x:Name="ListView" Visibility="Collapsed" SelectionMode="None" />
         </Grid>
     </Border>

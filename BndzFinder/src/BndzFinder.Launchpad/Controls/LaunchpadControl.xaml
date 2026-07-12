@@ -4,9 +4,9 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <Grid>
-        <Border Background="#B0101010">
-            <AcrylicBrush TintColor="#90101010" TintOpacity="0.85" />
-        </Border>
+        <Grid.Background>
+            <AcrylicBrush TintColor="#90101010" TintOpacity="0.85" FallbackColor="#B0101010" />
+        </Grid.Background>
 
         <Grid Padding="48" RowSpacing="24">
             <Grid.RowDefinitions>
@@ -18,14 +18,14 @@
                      Width="320" HorizontalAlignment="Center"
                      CornerRadius="12" />
 
-            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
-                <ItemsControl x:Name="AppGrid">
-                    <ItemsControl.ItemsPanel>
+            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <GridView x:Name="AppGrid" SelectionMode="None" IsItemClickEnabled="True">
+                    <GridView.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <UniformGrid Columns="7" />
+                            <ItemsWrapGrid Orientation="Horizontal" MaximumRowsOrColumns="7" />
                         </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
+                    </GridView.ItemsPanel>
+                    <GridView.ItemTemplate>
                         <DataTemplate>
                             <Button Background="Transparent" BorderThickness="0" Padding="8" Width="96" Height="96">
                                 <StackPanel Spacing="8">
@@ -35,8 +35,8 @@
                                 </StackPanel>
                             </Button>
                         </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                    </GridView.ItemTemplate>
+                </GridView>
             </ScrollViewer>
         </Grid>
     </Grid>
