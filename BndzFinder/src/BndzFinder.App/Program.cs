@@ -14,12 +14,12 @@ public static class Program
             Bootstrap.Initialize(0x00010006);
 
         WinRT.ComWrappersSupport.InitializeComWrappers();
-        Application.Start(_ =>
+        Application.Start(p =>
         {
             var syncContext = new DispatcherQueueSynchronizationContext(
                 DispatcherQueue.GetForCurrentThread());
             SynchronizationContext.SetSynchronizationContext(syncContext);
-            _ = new App();
+            new App();
         });
     }
 }
