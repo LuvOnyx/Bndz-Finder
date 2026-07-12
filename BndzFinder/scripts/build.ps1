@@ -54,8 +54,7 @@ function Test-TransientNetworkError {
 
     $patterns = @(
         'NU1301',
-        'NU1101',
-        'NU1102',
+        'NU1302',
         'No such host is known',
         'Unable to load the service index',
         'Connection refused',

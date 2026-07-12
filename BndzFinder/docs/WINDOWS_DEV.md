@@ -177,7 +177,8 @@ dotnet nuget locals all --clear
 | `not digitally signed` / execution policy | Use **`.\run.cmd`** or **`.\build.cmd`** instead of `.ps1`, or `pwsh -ExecutionPolicy Bypass -File .\run.ps1` |
 | `BndzFinder.sln not found` | `cd` to folder containing `BndzFinder.sln` |
 | `dotnet not found` | Install .NET 9 SDK |
-| `NU1301` / `No such host is known` (nuget.org) | **Network dropped or DNS issue.** Reconnect WiFi, `ping www.nuget.org`, then `.\build.cmd`. First restore needs internet; do not clear cache unless corrupt |
+| `NU1101` Unable to find package | Bad package ID or wrong NuGet feed — **not WiFi**. This repo uses `nuget.org` only via `BndzFinder/nuget.config` |
+| `NU1301` / `No such host is known` (nuget.org) | **Network dropped or DNS issue.** Build auto-retries; reconnect WiFi and leave `.\run.cmd` running |
 | SDK 10 with pinned .NET 9 | Install [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) alongside SDK 10, or use `global.json` rollForward |
 | WinUI build fails | Install Windows App SDK / VS Build Tools with C++ workload |
 | No dock visible | Ensure ShellHost is running; check single-instance lock in `%TEMP%` |
