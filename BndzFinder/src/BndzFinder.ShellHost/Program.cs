@@ -231,7 +231,9 @@ internal sealed class ShellHostWorker : BackgroundService
                 rect.Right - rect.Left,
                 rect.Bottom - rect.Top,
                 _settings.Current.MinimizeEffect.ToString(),
-                snapshotBase64: null)
+                snapshotBase64: capture is null
+                    ? null
+                    : BgraPngEncoder.EncodePngBase64(capture.Pixels, capture.Width, capture.Height))
         }, CancellationToken.None).ConfigureAwait(false);
 
         await _animator.AnimateAsync(request, _settings.Current.MinimizeEffect, CancellationToken.None).ConfigureAwait(false);

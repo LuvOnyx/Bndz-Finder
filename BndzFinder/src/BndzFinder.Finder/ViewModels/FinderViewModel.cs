@@ -126,7 +126,14 @@ public partial class FinderViewModel : ObservableObject
                 BatteryTimeRemaining = await _metrics.GetBatteryTimeRemainingAsync().ConfigureAwait(false);
                 ClockText = DateTime.Now.ToString(_settings.Current.TimeFormat);
                 DateText = DateTime.Now.ToString(_settings.Current.DateFormat);
-                WeatherText = _settings.Current.ShowWeather ? _weather.GetCurrentCondition() : "—";
+                if (_settings.Current.ShowWeather)
+                {
+                    await _weather.RefreshAsync(
+                        _settings.Current.WeatherLatitude,
+                        _settings.Current.WeatherLongitude).ConfigureAwait(false);
+                    WeatherText = $"{_weather.GetCurrentCondition()} {_weather.GetCurrentCelsius():0}°";
+                }
+                else WeatherText = "—";
                 if (!_traySyncedFromIpc)
                     TrayIcons = await _trayMirror.GetIconsAsync().ConfigureAwait(false);
             }

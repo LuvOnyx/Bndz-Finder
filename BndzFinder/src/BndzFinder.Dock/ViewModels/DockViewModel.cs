@@ -7,6 +7,7 @@ using BndzFinder.Shell.Badges;
 using BndzFinder.Shell.Dock;
 using BndzFinder.Shell.Icons;
 using BndzFinder.Shell.Services;
+using BndzFinder.Theming;
 using BndzFinder.Theming.Customization;
 using BndzFinder.Theming.Glass;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -24,10 +25,13 @@ public partial class DockViewModel : ObservableObject
     private readonly BadgePollingService _badges;
     private readonly ProgressBarMirrorService _progress;
     private readonly WindowPreviewCoordinator _preview;
+    private readonly IWindowPreviewService? _windowPreview;
+    private readonly IThemePackResolver? _themePacks;
     private readonly IShellOverlayController? _overlays;
     private readonly IWindowCaptureService? _capture;
     private readonly IRunningAppSyncService _runningAppSync;
     private readonly HashSet<string> _runningApps = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, long> _itemWindowHandles = new(StringComparer.OrdinalIgnoreCase);
     private readonly System.Timers.Timer _runningAppTimer = new(2000) { AutoReset = true, Enabled = false };
     private IReadOnlyList<DockItem> _effectiveItems = [];
     private DateTimeOffset? _hideAfterUtc;
@@ -47,8 +51,13 @@ public partial class DockViewModel : ObservableObject
     [ObservableProperty] private bool _pointerNearEdge;
     [ObservableProperty] private IReadOnlyDictionary<string, int?> _badgeCounts = new Dictionary<string, int?>();
     [ObservableProperty] private string? _activeFolderStackPath;
+    [ObservableProperty] private FolderStackOptions? _activeFolderStackOptions;
 
     public bool PreviewEnabled => _settings.Current.PreviewOn;
+    public int PreviewSize => _settings.Current.PreviewSize;
+    public bool IsLockedForDrop => _settings.Current.LockIcons;
+
+    public IWindowPreviewService? WindowPreviewService => _windowPreview;
 
     public bool IsRunning(DockItem item) => _runningApps.Contains(item.Id);
 
@@ -70,7 +79,9 @@ public partial class DockViewModel : ObservableObject
         ProgressBarMirrorService? progress = null,
         IShellOverlayController? overlays = null,
         IWindowCaptureService? capture = null,
-        IRunningAppSyncService? runningAppSync = null)
+        IRunningAppSyncService? runningAppSync = null,
+        IWindowPreviewService? windowPreview = null,
+        IThemePackResolver? themePacks = null)
     {
         _settings = settings;
         _layoutEngine = layoutEngine ?? new PremiumDockLayoutEngine();
@@ -80,6 +91,8 @@ public partial class DockViewModel : ObservableObject
         _badges = badges ?? new BadgePollingService();
         _progress = progress ?? new ProgressBarMirrorService();
         _preview = new WindowPreviewCoordinator(settings.Current.PreviewDelayMs, settings.Current.PreviewSize);
+        _windowPreview = windowPreview;
+        _themePacks = themePacks;
         _overlays = overlays;
         _capture = capture;
         _runningAppSync = runningAppSync ?? new RunningAppSyncService();
@@ -118,9 +131,16 @@ public partial class DockViewModel : ObservableObject
         HoveredIndex = index;
         if (!PreviewEnabled || index < 0 || index >= LayoutItems.Count) return;
         var item = LayoutItems[index].Item;
-        var hwnd = WindowEnumerationService.FindMainWindowForExecutable(item.TargetPath);
-        if (hwnd != nint.Zero)
+        var hwnd = ResolveWindowHandle(item);
+        if (hwnd != 0)
             _ = _preview.OnIconHoveredAsync(hwnd, CancellationToken.None);
+    }
+
+    public long ResolveWindowHandle(DockItem item)
+    {
+        if (_itemWindowHandles.TryGetValue(item.Id, out var hwnd))
+            return hwnd;
+        return WindowEnumerationService.FindMainWindowForExecutable(item.TargetPath).ToInt64();
     }
 
     public void OnIconPointerExited() => _preview.OnIconExited();
@@ -152,6 +172,7 @@ public partial class DockViewModel : ObservableObject
                 break;
             case DockItemKind.Folder:
                 ActiveFolderStackPath = item.TargetPath;
+                ActiveFolderStackOptions = item.FolderOptions;
                 break;
             default:
                 await LaunchItemAsync(item);
@@ -174,6 +195,48 @@ public partial class DockViewModel : ObservableObject
             SortOrder = settings.DockItems.Count
         });
         await _iconPipeline.ProcessAsync(path).ConfigureAwait(false);
+        await _settings.SaveAsync().ConfigureAwait(false);
+        RefreshAll();
+    }
+
+    [RelayCommand]
+    public async Task PinDroppedPathAsync(string path)
+    {
+        if (_settings.Current.LockIcons || string.IsNullOrWhiteSpace(path)) return;
+
+        var settings = _settings.Current;
+        if (Directory.Exists(path))
+        {
+            settings.DockItems.Add(new DockItem
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                Kind = DockItemKind.Folder,
+                TargetPath = path,
+                DisplayName = Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)),
+                IsPinned = true,
+                SortOrder = settings.DockItems.Count,
+                FolderOptions = new FolderStackOptions()
+            });
+        }
+        else if (File.Exists(path))
+        {
+            var kind = path.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase)
+                       || path.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                ? DockItemKind.Application
+                : DockItemKind.File;
+            settings.DockItems.Add(new DockItem
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                Kind = kind,
+                TargetPath = path,
+                DisplayName = Path.GetFileNameWithoutExtension(path),
+                IsPinned = true,
+                SortOrder = settings.DockItems.Count
+            });
+            await _iconPipeline.ProcessAsync(path).ConfigureAwait(false);
+        }
+        else return;
+
         await _settings.SaveAsync().ConfigureAwait(false);
         RefreshAll();
     }
@@ -283,8 +346,20 @@ public partial class DockViewModel : ObservableObject
         var running = _runningAppSync.GetRunningApps(_settings.Current.DockAppBlacklist);
         _effectiveItems = _runningAppSync.MergeDockItems(_settings.Current.DockItems, running, out var runningIds);
         _runningApps.Clear();
+        _itemWindowHandles.Clear();
         foreach (var id in runningIds)
             _runningApps.Add(id);
+
+        foreach (var app in running)
+        {
+            _itemWindowHandles[app.Id] = app.MainWindow.ToInt64();
+            var pinned = _settings.Current.DockItems.FirstOrDefault(i =>
+                i.Kind is DockItemKind.Application or DockItemKind.File
+                && i.TargetPath.Equals(app.ExePath, StringComparison.OrdinalIgnoreCase));
+            if (pinned is not null)
+                _itemWindowHandles[pinned.Id] = app.MainWindow.ToInt64();
+        }
+
         RefreshLayout();
         UpdateVisibility();
     }
@@ -346,7 +421,7 @@ public partial class DockViewModel : ObservableObject
     private void RefreshAppearance()
     {
         var s = _settings.Current;
-        Appearance = _themeResolver.BuildDockAppearance(new DockAppearanceInput
+        var baseProfile = _themeResolver.BuildDockAppearance(new DockAppearanceInput
         {
             ThemeMode = MapThemeMode(s.ThemeMode),
             SystemIsDark = false,
@@ -364,6 +439,24 @@ public partial class DockViewModel : ObservableObject
             BaseIconSize = s.IconSize,
             MaxIconSize = s.IconMaxSize
         });
+
+        Appearance = new DockAppearanceProfile
+        {
+            Glass = baseProfile.Glass,
+            Accent = baseProfile.Accent,
+            Foreground = baseProfile.Foreground,
+            IsDark = baseProfile.IsDark,
+            DpiScale = baseProfile.DpiScale,
+            IconEffect = baseProfile.IconEffect,
+            IconImmersion = baseProfile.IconImmersion,
+            IconReflectionEnabled = baseProfile.IconReflectionEnabled,
+            IconReflectionOpacity = baseProfile.IconReflectionOpacity,
+            IconReflectionBlur = baseProfile.IconReflectionBlur,
+            BaseIconSize = baseProfile.BaseIconSize,
+            MaxIconSize = baseProfile.MaxIconSize,
+            DockSkinImagePath = _themePacks?.ResolveDockSkinPath(s),
+            TimeSkinImagePath = _themePacks?.ResolveTimeSkinPath(s)
+        };
 
         if (Appearance is not null)
         {

@@ -5,6 +5,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.UI;
 
 namespace BndzFinder.Dock.Controls;
@@ -21,6 +23,7 @@ public sealed partial class DockBarControl : UserControl
     private readonly List<DockIconControl> _iconControls = [];
     private Flyout? _folderFlyout;
     private Flyout? _previewFlyout;
+    private DwmPreviewHost? _dwmPreviewHost;
     private int? _dragSourceIndex;
     private double _dragStartX;
 
@@ -33,6 +36,9 @@ public sealed partial class DockBarControl : UserControl
     public DockBarControl()
     {
         InitializeComponent();
+        AllowDrop = true;
+        DragOver += OnDragOver;
+        Drop += OnDrop;
     }
 
     private static void OnViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -69,10 +75,23 @@ public sealed partial class DockBarControl : UserControl
     private void OnPreviewShowRequested(long hwnd)
     {
         if (ViewModel is null || !ViewModel.PreviewEnabled) return;
+
+        _previewFlyout ??= new Flyout { Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.Top };
+        _previewFlyout.Closed += (_, _) => _dwmPreviewHost?.HidePreview();
+
+        if (ViewModel.WindowPreviewService is { } previewService && OperatingSystem.IsWindows())
+        {
+            _dwmPreviewHost ??= new DwmPreviewHost();
+            _dwmPreviewHost.Configure(previewService, ViewModel.PreviewSize, (int)(ViewModel.PreviewSize * 0.62));
+            _previewFlyout.Content = _dwmPreviewHost;
+            _previewFlyout.ShowAt(IconCanvas);
+            _dwmPreviewHost.ShowPreview(hwnd);
+            return;
+        }
+
         var capture = ViewModel.CaptureService?.CaptureWindow((nint)hwnd);
         if (capture is null) return;
 
-        _previewFlyout ??= new Flyout { Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.Top };
         var image = new Image
         {
             Width = Math.Min(320, capture.Width),
@@ -85,13 +104,18 @@ public sealed partial class DockBarControl : UserControl
         _previewFlyout.ShowAt(IconCanvas);
     }
 
-    private void OnPreviewHideRequested() => _previewFlyout?.Hide();
+    private void OnPreviewHideRequested()
+    {
+        _dwmPreviewHost?.HidePreview();
+        _previewFlyout?.Hide();
+    }
 
     private void RefreshDock()
     {
         if (ViewModel?.Appearance is null) return;
 
         ApplyGlass(ViewModel.Appearance.Glass);
+        ApplyDockSkin(ViewModel.Appearance.DockSkinImagePath);
         GlassBackdrop.Width = ViewModel.DockBarWidth;
         GlassBackdrop.Height = ViewModel.DockBarHeight;
         DockShadow.Width = ViewModel.DockBarWidth;
@@ -152,11 +176,41 @@ public sealed partial class DockBarControl : UserControl
     private void ShowFolderStack(string folderPath)
     {
         _folderFlyout ??= new Flyout { Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.Top };
+        var options = ViewModel?.ActiveFolderStackOptions;
         _folderFlyout.Content = new FolderStackFlyout
         {
-            ViewModel = new FolderStackViewModel(folderPath)
+            ViewModel = new FolderStackViewModel(
+                folderPath,
+                options?.View ?? Core.Models.FolderStackView.Automatic,
+                options?.Sort ?? Core.Models.FolderSortMode.Name)
         };
         _folderFlyout.ShowAt(IconCanvas);
+    }
+
+    private void ApplyDockSkin(string? skinPath)
+    {
+        if (!string.IsNullOrWhiteSpace(skinPath) && File.Exists(skinPath))
+        {
+            var imageBrush = new ImageBrush
+            {
+                ImageSource = new BitmapImage(new Uri(skinPath)),
+                Stretch = Stretch.Fill,
+                Opacity = 0.35
+            };
+            GlassBackdrop.Background = imageBrush;
+            return;
+        }
+
+        if (GlassBackdrop.Background is not AcrylicBrush)
+        {
+            GlassBackdrop.Background = new AcrylicBrush
+            {
+                TintColor = Color.FromArgb(255, 26, 26, 26),
+                TintOpacity = 0.55,
+                TintLuminosityOpacity = 0.85,
+                FallbackColor = Color.FromArgb(255, 26, 26, 26)
+            };
+        }
     }
 
     private void ApplyGlass(GlassConfiguration glass)
@@ -204,6 +258,33 @@ public sealed partial class DockBarControl : UserControl
     private void OnPointerExited(object sender, PointerRoutedEventArgs e)
     {
         ViewModel?.OnPointerExited();
+    }
+
+    private void OnDragOver(object sender, DragEventArgs e)
+    {
+        if (ViewModel is null || ViewModel.IsLockedForDrop)
+        {
+            e.AcceptedOperation = DataPackageOperation.None;
+            return;
+        }
+
+        if (e.DataView.Contains(StandardDataFormats.StorageItems))
+            e.AcceptedOperation = DataPackageOperation.Copy;
+        else
+            e.AcceptedOperation = DataPackageOperation.None;
+    }
+
+    private async void OnDrop(object sender, DragEventArgs e)
+    {
+        if (ViewModel is null || ViewModel.IsLockedForDrop) return;
+        if (!e.DataView.Contains(StandardDataFormats.StorageItems)) return;
+
+        var items = await e.DataView.GetStorageItemsAsync();
+        foreach (var item in items)
+        {
+            if (string.IsNullOrWhiteSpace(item.Path)) continue;
+            await ViewModel.PinDroppedPathCommand.ExecuteAsync(item.Path);
+        }
     }
 
     private void ShowIconContextMenu(DockItem item, DockIconControl anchor, RightTappedRoutedEventArgs e)

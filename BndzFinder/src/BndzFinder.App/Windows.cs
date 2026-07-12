@@ -228,19 +228,24 @@ public partial class App : Application
         services.AddSingleton<IThemePackService, ThemePackService>();
         services.AddSingleton<IWindowPreviewService, WindowPreviewService>();
         services.AddSingleton<IWindowCaptureService, WindowCaptureService>();
+        services.AddSingleton<WeatherService>();
         services.AddSingleton<ISystemMetricsService, WmiSystemMetricsService>();
         services.AddSingleton<TrayIconMirrorService>();
         services.AddSingleton<ITrayMirrorFacade, TrayMirrorFacade>();
         services.AddSingleton<DockViewModel>(sp => new DockViewModel(
             sp.GetRequiredService<ISettingsService>(),
             overlays: sp.GetRequiredService<IShellOverlayController>(),
-            capture: sp.GetRequiredService<IWindowCaptureService>()));
+            capture: sp.GetRequiredService<IWindowCaptureService>(),
+            windowPreview: sp.GetRequiredService<IWindowPreviewService>(),
+            themePacks: sp.GetRequiredService<IThemePackResolver>()));
         services.AddSingleton<FinderViewModel>(sp =>
         {
+            var settings = sp.GetRequiredService<ISettingsService>();
             var vm = new FinderViewModel(
-                sp.GetRequiredService<ISettingsService>(),
+                settings,
                 sp.GetRequiredService<ISystemMetricsService>(),
-                sp.GetRequiredService<ITrayMirrorFacade>());
+                sp.GetRequiredService<ITrayMirrorFacade>(),
+                sp.GetRequiredService<WeatherService>());
             vm.PreferencesRequested += () => sp.GetRequiredService<IShellOverlayController>().ShowPreferences();
             return vm;
         });

@@ -57,11 +57,13 @@ These are why the product does not look or behave like MyDockFinder:
 - [x] **Theme pack resolver** — `ThemePackResolver` reads active pack paths
 - [x] **Dock corner radius** — wired from settings to glass chrome
 - [x] **Expanded context menus** — Show in Explorer, folder sort submenu
-- [ ] Window preview via DWM (`WindowPreviewService`)
-- [ ] Drag files/folders onto dock
-- [ ] Folder stack fan/grid with drag-out + real icons
-- [ ] Discord/WeChat/QQ badge adapters (real counts)
-- [ ] Weather API integration
+- [x] Window preview via DWM (`DwmPreviewHost` + `WindowPreviewService`)
+- [x] Drag files/folders onto dock
+- [x] Folder stack fan/grid with real icons
+- [x] Discord/WeChat/QQ badge adapters (window title parsing)
+- [x] Weather API integration (Open-Meteo)
+- [x] Minimize snapshot over IPC (PNG base64)
+- [x] Theme pack dock skin image overlay
 - [ ] Progress bar mirror from tray
 - [ ] Theme pack apply to Finder clock/calendar skins in UI
 

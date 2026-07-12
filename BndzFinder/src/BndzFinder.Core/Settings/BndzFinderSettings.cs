@@ -111,6 +111,10 @@ public sealed class BndzFinderSettings
     public int ScreenRoundRadius { get; set; } = 28;
     public string ScreenRoundColor { get; set; } = "#000000";
 
+    // Weather (Open-Meteo)
+    public double WeatherLatitude { get; set; } = 37.7749;
+    public double WeatherLongitude { get; set; } = -122.4194;
+
     // Hotkeys & hot corners
     public HotkeyBinding DockHotkey { get; set; } = new() { Id = "hotkeyDock" };
     public HotkeyBinding FinderHotkey { get; set; } = new() { Id = "hotkeyfinder" };

@@ -9,6 +9,7 @@
     <ProjectReference Include="..\BndzFinder.Core\BndzFinder.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="SkiaSharp" />
     <PackageReference Include="Microsoft.Windows.CsWin32">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

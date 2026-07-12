@@ -99,6 +99,8 @@ public sealed class DockAppearanceProfile
     public double IconReflectionBlur { get; init; }
     public int BaseIconSize { get; init; }
     public int MaxIconSize { get; init; }
+    public string? DockSkinImagePath { get; init; }
+    public string? TimeSkinImagePath { get; init; }
     public double ScaledCornerRadius => Glass.CornerRadius * DpiScale;
     public double ScaledBaseIconSize => BaseIconSize * DpiScale;
     public double ScaledMaxIconSize => MaxIconSize * DpiScale;
