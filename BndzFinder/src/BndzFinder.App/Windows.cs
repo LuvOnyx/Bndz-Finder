@@ -88,6 +88,8 @@ public partial class App : Application
             _dockWindow = new DockWindow();
             _dockWindow.Activate();
             MainWindow = _dockWindow;
+            UiHostContext.GetOwnerWindowHandle = () =>
+                MainWindow is not null ? WindowNative.GetWindowHandle(MainWindow) : nint.Zero;
             _dockWindow.InitializePlacement();
             _dockWindow.ApplyVisibility(true);
             taskbarLifecycle.SyncWithDock(true);
@@ -226,6 +228,7 @@ public partial class App : Application
     private void ShowPreferences()
     {
         _prefsWindow ??= new PreferencesWindow();
+        UiHostContext.GetOwnerWindowHandle = () => WindowNative.GetWindowHandle(_prefsWindow);
         _prefsWindow.Activate();
     }
 

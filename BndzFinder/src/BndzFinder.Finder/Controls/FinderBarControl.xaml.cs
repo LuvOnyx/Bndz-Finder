@@ -1,4 +1,5 @@
 using BndzFinder.Finder.ViewModels;
+using BndzFinder.Interop;
 using BndzFinder.StageManager.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -17,7 +18,7 @@ public sealed partial class FinderBarControl : UserControl
 
     public static readonly DependencyProperty StageManagerViewModelProperty =
         DependencyProperty.Register(nameof(StageManagerViewModel), typeof(StageManagerViewModel), typeof(FinderBarControl),
-            new PropertyMetadata(null, (_, _) => ((FinderBarControl)_).BindStageManager()));
+            new PropertyMetadata(null, (d, _) => ((FinderBarControl)d).BindStageManager()));
 
     private Flyout? _controlCenterFlyout;
 

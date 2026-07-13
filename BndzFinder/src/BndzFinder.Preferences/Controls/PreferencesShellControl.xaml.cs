@@ -1,10 +1,10 @@
 using BndzFinder.Core.Models;
+using BndzFinder.Core.Services;
 using BndzFinder.Preferences.Localization;
 using BndzFinder.Preferences.ViewModels;
 using BndzFinder.Theming;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 using WinRT.Interop;
 using Windows.Storage.Pickers;
 
@@ -218,26 +218,15 @@ public sealed partial class PreferencesShellControl : UserControl
     {
         if (ViewModel is null) return;
 
-        var window = FindParentWindow();
-        if (window is null) return;
+        var hwnd = UiHostContext.GetOwnerWindowHandle?.Invoke() ?? nint.Zero;
+        if (hwnd == nint.Zero) return;
 
         var picker = new FileOpenPicker();
-        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(window));
+        InitializeWithWindow.Initialize(picker, hwnd);
         picker.FileTypeFilter.Add(".zip");
         var file = await picker.PickSingleFileAsync();
         if (file is null) return;
         await ViewModel.ImportThemeCommand.ExecuteAsync(file.Path);
         BindThemes();
-    }
-
-    private Window? FindParentWindow()
-    {
-        DependencyObject? current = this;
-        while (current is not null)
-        {
-            if (current is Window window) return window;
-            current = VisualTreeHelper.GetParent(current);
-        }
-        return null;
     }
 }

@@ -153,7 +153,6 @@ public partial class PreferencesViewModel : ObservableObject
     [RelayCommand]
     public void SetLanguage(string language) => Settings.Language = language;
 
-    [RelayCommand]
     public void SetHotkey(string hotkeyId, string? modifiers, string? key)
     {
         var binding = hotkeyId switch

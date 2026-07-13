@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using BndzFinder.Core.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -10,11 +11,11 @@ public sealed partial class HotkeyCaptureBox : UserControl
 {
     public static readonly DependencyProperty BindingProperty =
         DependencyProperty.Register(nameof(Binding), typeof(HotkeyBinding), typeof(HotkeyCaptureBox),
-            new PropertyMetadata(null, (_, e) => ((HotkeyCaptureBox)_).UpdateDisplay()));
+            new PropertyMetadata(null, (d, _) => ((HotkeyCaptureBox)d).UpdateDisplay()));
 
     public static readonly DependencyProperty IsRecordingProperty =
         DependencyProperty.Register(nameof(IsRecording), typeof(bool), typeof(HotkeyCaptureBox),
-            new PropertyMetadata(false, (_, e) => ((HotkeyCaptureBox)_).UpdateRecordingState()));
+            new PropertyMetadata(false, (d, _) => ((HotkeyCaptureBox)d).UpdateRecordingState()));
 
     public HotkeyBinding? Binding
     {
@@ -70,19 +71,10 @@ public sealed partial class HotkeyCaptureBox : UserControl
             return;
 
         var mods = new List<string>();
-        var state = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control);
-        if (state.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down)) mods.Add("Ctrl");
-        state = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
-        if (state.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down)) mods.Add("Shift");
-        state = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Menu);
-        if (state.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down)) mods.Add("Alt");
-        state = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.LeftWindows);
-        if (state.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down)) mods.Add("Win");
-        else
-        {
-            state = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.RightWindows);
-            if (state.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down)) mods.Add("Win");
-        }
+        if (IsVirtualKeyDown(0x11)) mods.Add("Ctrl");
+        if (IsVirtualKeyDown(0x10)) mods.Add("Shift");
+        if (IsVirtualKeyDown(0x12)) mods.Add("Alt");
+        if (IsVirtualKeyDown(0x5B) || IsVirtualKeyDown(0x5C)) mods.Add("Win");
 
         Binding.Modifiers = mods.Count == 0 ? null : string.Join("+", mods);
         Binding.Key = e.Key.ToString();
@@ -90,6 +82,12 @@ public sealed partial class HotkeyCaptureBox : UserControl
         UpdateDisplay();
         BindingCaptured?.Invoke(this, Binding);
     }
+
+    private static bool IsVirtualKeyDown(int virtualKey) =>
+        (GetAsyncKeyState(virtualKey) & 0x8000) != 0;
+
+    [DllImport("user32.dll")]
+    private static extern short GetAsyncKeyState(int vKey);
 
     private void UpdateDisplay()
     {
