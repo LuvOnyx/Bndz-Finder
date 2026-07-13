@@ -91,9 +91,39 @@ public interface IStartupService
 
 public sealed class StartupService : IStartupService
 {
+    private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
+    private const string RunValueName = "BndzFinder";
+
     public Task ConfigureAsync(StartupMode mode, CancellationToken cancellationToken = default)
     {
-        _ = mode;
+        if (!OperatingSystem.IsWindows()) return Task.CompletedTask;
+
+        using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true);
+        if (key is null) return Task.CompletedTask;
+
+        if (mode == StartupMode.None)
+        {
+            key.DeleteValue(RunValueName, throwOnMissingValue: false);
+            return Task.CompletedTask;
+        }
+
+        var launcher = ResolveLauncherCommand();
+        if (string.IsNullOrWhiteSpace(launcher)) return Task.CompletedTask;
+        key.SetValue(RunValueName, launcher);
         return Task.CompletedTask;
+    }
+
+    private static string? ResolveLauncherCommand()
+    {
+        var runScript = Path.Combine(AppContext.BaseDirectory, "run.cmd");
+        if (File.Exists(runScript))
+            return $"\"{runScript}\"";
+
+        var shellHost = Path.Combine(AppContext.BaseDirectory, "BndzFinder.ShellHost.exe");
+        var app = Path.Combine(AppContext.BaseDirectory, "BndzFinder.App.exe");
+        if (File.Exists(shellHost) && File.Exists(app))
+            return $"\"{shellHost}\" & \"{app}\"";
+
+        return null;
     }
 }

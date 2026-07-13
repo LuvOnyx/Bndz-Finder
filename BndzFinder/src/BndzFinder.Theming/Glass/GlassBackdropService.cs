@@ -44,6 +44,7 @@ public sealed class GlassCustomizationInput
 {
     public double GlobalBlur { get; init; } = 0.6;
     public double Opacity { get; init; } = 0.82;
+    public double CornerRadius { get; init; } = 24;
     public ThemeModeKind ThemeMode { get; init; } = ThemeModeKind.Auto;
     public string AccentColor { get; init; } = "#0078D4";
     public bool IsDark { get; init; }
@@ -63,6 +64,7 @@ public sealed class GlassBackdropService : IGlassBackdropService
         var isDark = input.IsDark || (input.ThemeMode == ThemeModeKind.Dark);
         var tint = isDark ? "#1A1A1A" : "#FFFFFF";
         var borderOpacity = isDark ? 0.18 : 0.12;
+        var corner = input.CornerRadius > 0 ? input.CornerRadius : AppleDesignMetrics.DockPillCornerRadius;
 
         return effect switch
         {
@@ -74,7 +76,7 @@ public sealed class GlassBackdropService : IGlassBackdropService
                 Saturation = 1.0,
                 TintColor = tint,
                 TintOpacity = isDark ? 0.55 : 0.35,
-                CornerRadius = AppleDesignMetrics.DockPillCornerRadius,
+                CornerRadius = corner,
                 BorderOpacity = borderOpacity,
                 ShadowOpacity = 0.12
             },
@@ -87,7 +89,7 @@ public sealed class GlassBackdropService : IGlassBackdropService
                 Luminosity = isDark ? 0.88 : 0.98,
                 TintColor = tint,
                 TintOpacity = isDark ? 0.08 : 0.04,
-                CornerRadius = AppleDesignMetrics.DockPillCornerRadius,
+                CornerRadius = corner,
                 BorderOpacity = borderOpacity,
                 ShadowOpacity = 0.16,
                 ShadowBlur = 20
@@ -101,7 +103,7 @@ public sealed class GlassBackdropService : IGlassBackdropService
                 Luminosity = isDark ? 0.92 : 1.0,
                 TintColor = input.AccentColor,
                 TintOpacity = 0.03,
-                CornerRadius = AppleDesignMetrics.DockPillCornerRadius,
+                CornerRadius = corner,
                 BorderOpacity = borderOpacity * 0.8,
                 ShadowOpacity = 0.14
             },

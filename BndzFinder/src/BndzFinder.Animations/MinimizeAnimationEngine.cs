@@ -114,18 +114,11 @@ public sealed class D3D11MinimizeRenderer : ID3D11MinimizeRenderer
 
 public sealed class MinimizeAnimationEngine
 {
-    private readonly MinimizeAnimatorFactory _factory;
     private readonly IMinimizeFrameCalculator _calculator;
-    private readonly ID3D11MinimizeRenderer _d3d;
 
-    public MinimizeAnimationEngine(
-        MinimizeAnimatorFactory? factory = null,
-        IMinimizeFrameCalculator? calculator = null,
-        ID3D11MinimizeRenderer? d3d = null)
+    public MinimizeAnimationEngine(IMinimizeFrameCalculator? calculator = null)
     {
-        _factory = factory ?? new MinimizeAnimatorFactory();
         _calculator = calculator ?? new MinimizeFrameCalculator();
-        _d3d = d3d ?? new D3D11MinimizeRenderer();
     }
 
     public MinimizeFrameState? LastFrame { get; private set; }
@@ -135,20 +128,15 @@ public sealed class MinimizeAnimationEngine
         MinimizeEffect effect,
         CancellationToken cancellationToken = default)
     {
-        var animator = _factory.Get(effect);
         var duration = request.SlowMotion ? request.DurationSeconds * 2.5 : request.DurationSeconds;
-        var frames = (int)(duration * 60);
+        var frames = Math.Max(1, (int)(duration * 60));
 
         for (var frame = 0; frame <= frames; frame++)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var t = frame / (double)frames;
             LastFrame = _calculator.Calculate(request, effect, t);
-            if (LastFrame.UseHardware && _d3d.IsAvailable)
-                _d3d.RenderFrame(request, LastFrame);
             await Task.Delay(TimeSpan.FromMilliseconds(1000.0 / 60), cancellationToken).ConfigureAwait(false);
         }
-
-        await animator.AnimateAsync(request, cancellationToken).ConfigureAwait(false);
     }
 }

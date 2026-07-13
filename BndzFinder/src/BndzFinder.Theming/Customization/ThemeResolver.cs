@@ -74,6 +74,7 @@ public sealed class DockAppearanceInput
     public double DpiScale { get; init; } = 1.0;
     public double GlobalBlur { get; init; } = 0.6;
     public double DockOpacity { get; init; } = 0.82;
+    public double DockCornerRadius { get; init; } = 24;
     public GlassEffectKind GlassEffect { get; init; } = GlassEffectKind.Acrylic;
     public bool IconReflectionEnabled { get; init; } = true;
     public double IconReflectionOpacity { get; init; } = 0.35;
@@ -98,6 +99,8 @@ public sealed class DockAppearanceProfile
     public double IconReflectionBlur { get; init; }
     public int BaseIconSize { get; init; }
     public int MaxIconSize { get; init; }
+    public string? DockSkinImagePath { get; init; }
+    public string? TimeSkinImagePath { get; init; }
     public double ScaledCornerRadius => Glass.CornerRadius * DpiScale;
     public double ScaledBaseIconSize => BaseIconSize * DpiScale;
     public double ScaledMaxIconSize => MaxIconSize * DpiScale;
@@ -130,6 +133,7 @@ public sealed class ThemeResolver : IThemeResolver
         {
             GlobalBlur = input.GlobalBlur,
             Opacity = input.DockOpacity,
+            CornerRadius = input.DockCornerRadius,
             ThemeMode = input.ThemeMode,
             AccentColor = input.AccentColor,
             IsDark = isDark

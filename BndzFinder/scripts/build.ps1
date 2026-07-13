@@ -231,6 +231,23 @@ Invoke-DotNetWithRetry -Label 'Restoring BndzFinder.sln' -MaxAttempts $NetworkRe
 
 Invoke-DotNet -Label "Building full solution ($Configuration)" build $Sln -c $Configuration --no-restore
 
+$AppExeCandidates = Get-ChildItem -Path (Join-Path $Root 'src\BndzFinder.App\bin') -Recurse -Filter 'BndzFinder.App.exe' -ErrorAction SilentlyContinue |
+    Where-Object { $_.DirectoryName -match 'win-x64' } |
+    Sort-Object LastWriteTime -Descending
+if ($AppExeCandidates) {
+    $AppDir = $AppExeCandidates[0].DirectoryName
+    $runtimeDlls = @('Microsoft.ui.xaml.dll', 'Microsoft.WindowsAppRuntime.dll', 'Microsoft.WindowsAppRuntime.Bootstrap.dll')
+    $missingRuntime = $runtimeDlls | Where-Object { -not (Test-Path (Join-Path $AppDir $_)) }
+    if ($missingRuntime.Count -gt 0) {
+        Write-Host ""
+        Write-Host "WARNING: Self-contained WinUI runtime DLLs missing in $AppDir" -ForegroundColor Yellow
+        Write-Host "  Missing: $($missingRuntime -join ', ')" -ForegroundColor Yellow
+        Write-Host "  App will fail at startup with bootstrap error 0x80670016." -ForegroundColor Yellow
+        Write-Host "  Delete src\BndzFinder.App\bin and obj, then rebuild." -ForegroundColor Yellow
+        Write-Host ""
+    }
+}
+
 if (-not $SkipTests) {
     Invoke-DotNet -Label "Running tests ($Configuration)" test $Sln -c $Configuration --no-build
 }

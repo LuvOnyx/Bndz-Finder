@@ -7,6 +7,7 @@ using BndzFinder.Shell.Badges;
 using BndzFinder.Shell.Dock;
 using BndzFinder.Shell.Icons;
 using BndzFinder.Shell.Services;
+using BndzFinder.Theming;
 using BndzFinder.Theming.Customization;
 using BndzFinder.Theming.Glass;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -24,9 +25,19 @@ public partial class DockViewModel : ObservableObject
     private readonly BadgePollingService _badges;
     private readonly ProgressBarMirrorService _progress;
     private readonly WindowPreviewCoordinator _preview;
+    private readonly IWindowPreviewService? _windowPreview;
+    private readonly IThemePackResolver? _themePacks;
     private readonly IShellOverlayController? _overlays;
     private readonly IWindowCaptureService? _capture;
+    private readonly IRunningAppSyncService _runningAppSync;
     private readonly HashSet<string> _runningApps = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, long> _itemWindowHandles = new(StringComparer.OrdinalIgnoreCase);
+    private readonly System.Timers.Timer _runningAppTimer = new(2000) { AutoReset = true, Enabled = false };
+    private IReadOnlyList<DockItem> _effectiveItems = [];
+    private DateTimeOffset? _hideAfterUtc;
+
+    /// <summary>Set by DockWindow to marshal layout refresh onto the UI thread.</summary>
+    public Action? UiRefresh { get; set; }
 
     [ObservableProperty] private IReadOnlyList<PremiumDockLayoutItem> _layoutItems = [];
     [ObservableProperty] private IReadOnlyList<DockIconViewModel> _iconViewModels = [];
@@ -40,13 +51,23 @@ public partial class DockViewModel : ObservableObject
     [ObservableProperty] private bool _pointerNearEdge;
     [ObservableProperty] private IReadOnlyDictionary<string, int?> _badgeCounts = new Dictionary<string, int?>();
     [ObservableProperty] private string? _activeFolderStackPath;
+    [ObservableProperty] private FolderStackOptions? _activeFolderStackOptions;
 
     public bool PreviewEnabled => _settings.Current.PreviewOn;
+    public int PreviewSize => _settings.Current.PreviewSize;
+    public bool IsLockedForDrop => _settings.Current.LockIcons;
+
+    public IWindowPreviewService? WindowPreviewService => _windowPreview;
+
+    public bool IsRunning(DockItem item) => _runningApps.Contains(item.Id);
 
     public event Action<long>? PreviewShowRequested;
     public event Action? PreviewHideRequested;
 
     public IWindowCaptureService? CaptureService => _capture;
+
+    /// <summary>When set, the dock window should hide after this UTC time (hide-delay modes).</summary>
+    public DateTimeOffset? HideAfterUtc => _hideAfterUtc;
 
     public DockViewModel(
         ISettingsService settings,
@@ -57,7 +78,10 @@ public partial class DockViewModel : ObservableObject
         BadgePollingService? badges = null,
         ProgressBarMirrorService? progress = null,
         IShellOverlayController? overlays = null,
-        IWindowCaptureService? capture = null)
+        IWindowCaptureService? capture = null,
+        IRunningAppSyncService? runningAppSync = null,
+        IWindowPreviewService? windowPreview = null,
+        IThemePackResolver? themePacks = null)
     {
         _settings = settings;
         _layoutEngine = layoutEngine ?? new PremiumDockLayoutEngine();
@@ -67,15 +91,21 @@ public partial class DockViewModel : ObservableObject
         _badges = badges ?? new BadgePollingService();
         _progress = progress ?? new ProgressBarMirrorService();
         _preview = new WindowPreviewCoordinator(settings.Current.PreviewDelayMs, settings.Current.PreviewSize);
+        _windowPreview = windowPreview;
+        _themePacks = themePacks;
         _overlays = overlays;
         _capture = capture;
+        _runningAppSync = runningAppSync ?? new RunningAppSyncService();
         _preview.PreviewShowRequested += hwnd => PreviewShowRequested?.Invoke(hwnd);
         _preview.PreviewHideRequested += () => PreviewHideRequested?.Invoke();
         _settings.SettingsChanged += (_, _) => RefreshAll();
         _badges.CountsUpdated += (_, e) => BadgeCounts = e.Counts;
         _badges.Start(TimeSpan.FromSeconds(5));
+        _runningAppTimer.Elapsed += (_, _) => RefreshRunningApps();
         SeedDefaultItems();
         RefreshAll();
+        if (OperatingSystem.IsWindows())
+            _runningAppTimer.Start();
     }
 
     partial void OnCursorPositionChanged(double value) => RefreshLayout();
@@ -101,10 +131,47 @@ public partial class DockViewModel : ObservableObject
         HoveredIndex = index;
         if (!PreviewEnabled || index < 0 || index >= LayoutItems.Count) return;
         var item = LayoutItems[index].Item;
-        var hwnd = WindowEnumerationService.FindMainWindowForExecutable(item.TargetPath);
-        if (hwnd != nint.Zero)
+        var hwnd = ResolveWindowHandle(item);
+        if (hwnd != 0)
             _ = _preview.OnIconHoveredAsync(hwnd, CancellationToken.None);
     }
+
+    public long ResolveWindowHandle(DockItem item)
+    {
+        if (_itemWindowHandles.TryGetValue(item.Id, out var hwnd))
+            return hwnd;
+        return WindowEnumerationService.FindMainWindowForExecutable(item.TargetPath).ToInt64();
+    }
+
+    public string? FindItemIdForWindow(long hwnd)
+    {
+        foreach (var pair in _itemWindowHandles)
+        {
+            if (pair.Value == hwnd) return pair.Key;
+        }
+
+        if (!OperatingSystem.IsWindows()) return null;
+        try
+        {
+            _ = GetWindowThreadProcessId((nint)hwnd, out var pid);
+            if (pid == 0) return null;
+            using var process = System.Diagnostics.Process.GetProcessById((int)pid);
+            var exe = process.MainModule?.FileName;
+            if (string.IsNullOrWhiteSpace(exe)) return null;
+
+            foreach (var item in _effectiveItems)
+            {
+                if (item.TargetPath.Equals(exe, StringComparison.OrdinalIgnoreCase))
+                    return item.Id;
+            }
+        }
+        catch { }
+
+        return null;
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(nint hWnd, out uint lpdwProcessId);
 
     public void OnIconPointerExited() => _preview.OnIconExited();
 
@@ -135,6 +202,7 @@ public partial class DockViewModel : ObservableObject
                 break;
             case DockItemKind.Folder:
                 ActiveFolderStackPath = item.TargetPath;
+                ActiveFolderStackOptions = item.FolderOptions;
                 break;
             default:
                 await LaunchItemAsync(item);
@@ -162,11 +230,62 @@ public partial class DockViewModel : ObservableObject
     }
 
     [RelayCommand]
+    public async Task PinDroppedPathAsync(string path)
+    {
+        if (_settings.Current.LockIcons || string.IsNullOrWhiteSpace(path)) return;
+
+        var settings = _settings.Current;
+        if (Directory.Exists(path))
+        {
+            settings.DockItems.Add(new DockItem
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                Kind = DockItemKind.Folder,
+                TargetPath = path,
+                DisplayName = Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)),
+                IsPinned = true,
+                SortOrder = settings.DockItems.Count,
+                FolderOptions = new FolderStackOptions()
+            });
+        }
+        else if (File.Exists(path))
+        {
+            var kind = path.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase)
+                       || path.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                ? DockItemKind.Application
+                : DockItemKind.File;
+            settings.DockItems.Add(new DockItem
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                Kind = kind,
+                TargetPath = path,
+                DisplayName = Path.GetFileNameWithoutExtension(path),
+                IsPinned = true,
+                SortOrder = settings.DockItems.Count
+            });
+            await _iconPipeline.ProcessAsync(path).ConfigureAwait(false);
+        }
+        else return;
+
+        await _settings.SaveAsync().ConfigureAwait(false);
+        RefreshAll();
+    }
+
+    [RelayCommand]
     public async Task LaunchItemAsync(DockItem item)
     {
         if (!OperatingSystem.IsWindows()) return;
         if (item.Kind == DockItemKind.Application || item.Kind == DockItemKind.File)
         {
+            var hwnd = (nint)ResolveWindowHandle(item);
+            if (hwnd != nint.Zero)
+            {
+                WindowOperations.FocusWindow(hwnd);
+                _runningApps.Add(item.Id);
+                RefreshLayout();
+                return;
+            }
+
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(item.TargetPath) { UseShellExecute = true });
             _runningApps.Add(item.Id);
             RefreshLayout();
@@ -174,9 +293,118 @@ public partial class DockViewModel : ObservableObject
         await Task.CompletedTask;
     }
 
+    [RelayCommand]
+    public async Task PinRunningItemAsync(DockItem item)
+    {
+        if (_settings.Current.LockIcons || item.IsPinned) return;
+        if (item.Kind is not DockItemKind.Application and not DockItemKind.File) return;
+
+        var settings = _settings.Current;
+        var pinned = new DockItem
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Kind = item.Kind,
+            TargetPath = item.TargetPath,
+            DisplayName = item.DisplayName ?? Path.GetFileNameWithoutExtension(item.TargetPath),
+            IsPinned = true,
+            SortOrder = settings.DockItems.Count
+        };
+        settings.DockItems.Add(pinned);
+        await _iconPipeline.ProcessAsync(item.TargetPath).ConfigureAwait(false);
+        await _settings.SaveAsync().ConfigureAwait(false);
+        RefreshAll();
+    }
+
+    [RelayCommand]
+    public async Task RemoveFromDockAsync(DockItem item)
+    {
+        if (item.IsLocked || _settings.Current.LockIcons) return;
+        if (item.Id.StartsWith("running:", StringComparison.OrdinalIgnoreCase)) return;
+
+        _settings.Current.DockItems.RemoveAll(i => i.Id == item.Id);
+        await _settings.SaveAsync().ConfigureAwait(false);
+        RefreshAll();
+    }
+
+    [RelayCommand]
+    public Task QuitApplicationAsync(DockItem item)
+    {
+        if (!OperatingSystem.IsWindows()) return Task.CompletedTask;
+        if (item.Kind is not DockItemKind.Application) return Task.CompletedTask;
+
+        var name = Path.GetFileNameWithoutExtension(item.TargetPath);
+        foreach (var proc in System.Diagnostics.Process.GetProcessesByName(name))
+        {
+            try { proc.CloseMainWindow(); proc.WaitForExit(1500); if (!proc.HasExited) proc.Kill(); }
+            catch { /* access denied */ }
+        }
+
+        RefreshAll();
+        return Task.CompletedTask;
+    }
+
+    [RelayCommand]
+    public void ShowInExplorer(DockItem item)
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        var path = item.Kind == DockItemKind.Folder ? item.TargetPath : item.TargetPath;
+        if (File.Exists(path))
+            _ = System.Diagnostics.Process.Start("explorer", $"/select,\"{path}\"");
+        else if (Directory.Exists(path))
+            _ = System.Diagnostics.Process.Start("explorer", path);
+    }
+
+    public async Task ReorderItemAsync(int fromIndex, int toIndex)
+    {
+        if (_settings.Current.LockIcons || fromIndex == toIndex) return;
+        var items = _settings.Current.DockItems.OrderBy(i => i.SortOrder).ToList();
+        if (fromIndex < 0 || toIndex < 0 || fromIndex >= items.Count || toIndex >= items.Count) return;
+        var moving = items[fromIndex];
+        if (!_behavior.CanDragReorder(_settings.Current, moving)) return;
+        items.RemoveAt(fromIndex);
+        items.Insert(toIndex, moving);
+        for (var i = 0; i < items.Count; i++)
+            items[i].SortOrder = i;
+        _settings.Current.DockItems = items;
+        await _settings.SaveAsync().ConfigureAwait(false);
+        RefreshAll();
+    }
+
+    public void ApplyProgressFromPayload(string json)
+    {
+        foreach (var entry in ProgressPayload.Deserialize(json))
+            _progress.SetProgress(entry.ExePath, entry.Value);
+        RefreshLayout();
+    }
+
     public void RefreshAll()
     {
+        RefreshRunningApps();
         RefreshAppearance();
+        RefreshLayout();
+        UpdateVisibility();
+        _ = EnsureIconsAsync();
+    }
+
+    private void RefreshRunningApps()
+    {
+        var running = _runningAppSync.GetRunningApps(_settings.Current.DockAppBlacklist);
+        _effectiveItems = _runningAppSync.MergeDockItems(_settings.Current.DockItems, running, out var runningIds);
+        _runningApps.Clear();
+        _itemWindowHandles.Clear();
+        foreach (var id in runningIds)
+            _runningApps.Add(id);
+
+        foreach (var app in running)
+        {
+            _itemWindowHandles[app.Id] = app.MainWindow.ToInt64();
+            var pinned = _settings.Current.DockItems.FirstOrDefault(i =>
+                i.Kind is DockItemKind.Application or DockItemKind.File
+                && i.TargetPath.Equals(app.ExePath, StringComparison.OrdinalIgnoreCase));
+            if (pinned is not null)
+                _itemWindowHandles[pinned.Id] = app.MainWindow.ToInt64();
+        }
+
         RefreshLayout();
         UpdateVisibility();
     }
@@ -189,13 +417,56 @@ public partial class DockViewModel : ObservableObject
 
     private void UpdateVisibility()
     {
-        IsVisible = _behavior.ShouldShowDock(_settings.Current, PointerNearEdge, _runningApps.Count > 0);
+        var shouldShow = _behavior.ShouldShowDock(_settings.Current, PointerNearEdge, _runningApps.Count > 0);
+        if (shouldShow)
+        {
+            _hideAfterUtc = null;
+            IsVisible = true;
+            return;
+        }
+
+        if (_settings.Current.DockDisplayMode is DockDisplayMode.Normal or DockDisplayMode.AlwaysShow)
+        {
+            _hideAfterUtc = null;
+            IsVisible = false;
+            return;
+        }
+
+        _hideAfterUtc = DateTimeOffset.UtcNow.AddMilliseconds(Math.Max(0, _settings.Current.HideDockDelayMs));
+    }
+
+    public void ApplyHideDelayIfDue()
+    {
+        if (_hideAfterUtc is null || DateTimeOffset.UtcNow < _hideAfterUtc) return;
+        _hideAfterUtc = null;
+        IsVisible = false;
+    }
+
+    private async Task EnsureIconsAsync()
+    {
+        foreach (var item in _effectiveItems)
+        {
+            if (item.Kind is DockItemKind.Application or DockItemKind.File)
+            {
+                try { await _iconPipeline.ProcessAsync(item.TargetPath).ConfigureAwait(false); }
+                catch { /* icon extraction can fail for protected paths */ }
+            }
+        }
+
+        foreach (var assetId in new[] { "icon-finder", "icon-launchpad", "icon-calendar", "icon-trash", "icon-weather", "icon-preferences" })
+        {
+            var catalog = new AssetCatalogService();
+            var path = catalog.ResolvePath(assetId);
+            SystemIconFallbackGenerator.EnsureFallback(assetId, path);
+        }
+
+        UiRefresh?.Invoke();
     }
 
     private void RefreshAppearance()
     {
         var s = _settings.Current;
-        Appearance = _themeResolver.BuildDockAppearance(new DockAppearanceInput
+        var baseProfile = _themeResolver.BuildDockAppearance(new DockAppearanceInput
         {
             ThemeMode = MapThemeMode(s.ThemeMode),
             SystemIsDark = false,
@@ -203,6 +474,7 @@ public partial class DockViewModel : ObservableObject
             DpiScale = s.DpiScale,
             GlobalBlur = s.GlobalBlurValue,
             DockOpacity = s.DockOpacity,
+            DockCornerRadius = s.DockCornerRadius,
             GlassEffect = MapGlassEffect(s.DockGlassEffect),
             IconReflectionEnabled = s.IconReflectionEnabled,
             IconReflectionOpacity = s.IconReflectionOpacity,
@@ -213,19 +485,38 @@ public partial class DockViewModel : ObservableObject
             MaxIconSize = s.IconMaxSize
         });
 
+        Appearance = new DockAppearanceProfile
+        {
+            Glass = baseProfile.Glass,
+            Accent = baseProfile.Accent,
+            Foreground = baseProfile.Foreground,
+            IsDark = baseProfile.IsDark,
+            DpiScale = baseProfile.DpiScale,
+            IconEffect = baseProfile.IconEffect,
+            IconImmersion = baseProfile.IconImmersion,
+            IconReflectionEnabled = baseProfile.IconReflectionEnabled,
+            IconReflectionOpacity = baseProfile.IconReflectionOpacity,
+            IconReflectionBlur = baseProfile.IconReflectionBlur,
+            BaseIconSize = baseProfile.BaseIconSize,
+            MaxIconSize = baseProfile.MaxIconSize,
+            DockSkinImagePath = _themePacks?.ResolveDockSkinPath(s),
+            TimeSkinImagePath = _themePacks?.ResolveTimeSkinPath(s)
+        };
+
         if (Appearance is not null)
         {
             DockBarHeight = Appearance.ScaledBaseIconSize + 24 * Appearance.DpiScale;
-            DockBarWidth = Math.Max(400, (s.DockItems.Count * (s.IconSize + s.IconSpace) + 48) * Appearance.DpiScale);
+            DockBarWidth = Math.Max(400, (_effectiveItems.Count * (s.IconSize + s.IconSpace) + 48) * Appearance.DpiScale);
         }
     }
 
-    private void RefreshLayout()
+    public void RefreshLayout()
     {
         var s = _settings.Current;
+        var items = _effectiveItems.Count > 0 ? _effectiveItems : s.DockItems;
         LayoutItems = _layoutEngine.ComputeLayout(new PremiumDockLayoutRequest
         {
-            Items = s.DockItems,
+            Items = items,
             CursorPosition = CursorPosition,
             BaseIconSize = s.IconSize,
             MaxIconSize = s.IconMaxSize,
@@ -247,7 +538,8 @@ public partial class DockViewModel : ObservableObject
             DisplayName = item.Item.DisplayName ?? Path.GetFileNameWithoutExtension(item.Item.TargetPath),
             LabelOpacity = item.IsHovered ? 1.0 : 0.0,
             BadgeCount = ResolveBadge(item.Item),
-            Progress = _progress.GetProgress(item.Item.TargetPath)
+            Progress = _progress.GetProgress(item.Item.TargetPath),
+            ShowRunningDot = _runningApps.Contains(item.Item.Id)
         }).ToList();
     }
 
@@ -269,7 +561,7 @@ public partial class DockViewModel : ObservableObject
         if (assetId is not null)
         {
             var path = catalog.ResolvePath(assetId);
-            if (File.Exists(path)) return path;
+            return SystemIconFallbackGenerator.EnsureFallback(assetId, path);
         }
         return _iconPipeline.GetCachePath(item.TargetPath);
     }
@@ -318,6 +610,7 @@ public sealed class DockIconViewModel
     public double LabelOpacity { get; init; }
     public int? BadgeCount { get; init; }
     public double Progress { get; init; }
+    public bool ShowRunningDot { get; init; }
     public double RenderSize => Layout?.Size ?? 0;
     public double RenderX => Layout?.X ?? 0;
     public double RenderY => Layout?.Y ?? 0;
@@ -325,5 +618,4 @@ public sealed class DockIconViewModel
     public double SelectRingOpacity => Layout?.SelectGlow ?? 0;
     public double ReflectionOpacity => Layout?.ReflectionOpacity ?? 0;
     public double ShadowOpacity => Layout?.ShadowOpacity ?? 0;
-    public bool ShowRunningDot => Layout is not null && Layout.ShowRunningIndicator && Layout.Item.IsPinned;
 }

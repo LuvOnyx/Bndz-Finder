@@ -12,6 +12,7 @@
     <PackageVersion Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
     <PackageVersion Include="Microsoft.WindowsAppSDK" Version="1.6.250108002" />
     <PackageVersion Include="SkiaSharp" Version="2.88.9" />
+    <PackageVersion Include="System.Diagnostics.PerformanceCounter" Version="10.0.0" />
     <PackageVersion Include="System.Management" Version="10.0.0" />
     <PackageVersion Include="Vortice.Direct3D11" Version="3.6.2" />
     <PackageVersion Include="Vortice.DXGI" Version="3.6.2" />

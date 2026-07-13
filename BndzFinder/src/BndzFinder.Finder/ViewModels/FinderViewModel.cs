@@ -1,7 +1,7 @@
-using System.Management;
 using BndzFinder.Core.Services;
 using BndzFinder.Shell.Services;
 using BndzFinder.Interop;
+using BndzFinder.Theming;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -13,6 +13,7 @@ public partial class FinderViewModel : ObservableObject
     private readonly ISystemMetricsService _metrics;
     private readonly ITrayMirrorFacade _trayMirror;
     private readonly WeatherService _weather;
+    private readonly IThemePackResolver? _themePacks;
     private bool _traySyncedFromIpc;
 
     [ObservableProperty] private double _cpuUsage;
@@ -29,6 +30,7 @@ public partial class FinderViewModel : ObservableObject
     [ObservableProperty] private IReadOnlyList<TrayProxyItem> _trayIcons = [];
     [ObservableProperty] private bool _isDark;
     [ObservableProperty] private double _barHeight = 28;
+    [ObservableProperty] private string? _timeSkinImagePath;
 
     public bool ShowCpu => _settings.Current.ShowCpu;
     public bool ShowGpu => _settings.Current.ShowGpu;
@@ -45,21 +47,26 @@ public partial class FinderViewModel : ObservableObject
     public bool ShowMediaControl => _settings.Current.ShowMediaControl;
     public bool ShowMicrophone => _settings.Current.ShowMicrophone;
     public bool ShowLyrics => _settings.Current.ShowLyrics;
+    public bool ShowStageManagerInFinder => _settings.Current.ShowStageManagerInFinder;
 
     public FinderViewModel(
         ISettingsService settings,
         ISystemMetricsService? metrics = null,
         ITrayMirrorFacade? trayMirror = null,
-        WeatherService? weather = null)
+        WeatherService? weather = null,
+        IThemePackResolver? themePacks = null)
     {
         _settings = settings;
-        _metrics = metrics ?? new WmiSystemMetricsService();
+        _metrics = metrics ?? new WindowsSystemMetricsService();
         _trayMirror = trayMirror ?? new TrayMirrorFacade(new TrayIconMirrorService());
         _weather = weather ?? new WeatherService();
+        _themePacks = themePacks;
         BarHeight = settings.Current.FinderHeight;
+        TimeSkinImagePath = _themePacks?.ResolveTimeSkinPath(settings.Current);
         _settings.SettingsChanged += (_, _) =>
         {
             BarHeight = _settings.Current.FinderHeight;
+            TimeSkinImagePath = _themePacks?.ResolveTimeSkinPath(_settings.Current);
             NotifyWidgetVisibility();
         };
         _ = StartPollingAsync();
@@ -90,6 +97,7 @@ public partial class FinderViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowNotifications));
         OnPropertyChanged(nameof(ShowMicrophone));
         OnPropertyChanged(nameof(ShowLyrics));
+        OnPropertyChanged(nameof(ShowStageManagerInFinder));
     }
 
     [RelayCommand]
@@ -103,7 +111,10 @@ public partial class FinderViewModel : ObservableObject
             {
                 Tooltip = s.Tooltip,
                 IconId = s.IconId,
-                OwnerWindow = (nint)s.OwnerWindow
+                OwnerWindow = (nint)s.OwnerWindow,
+                IconData = string.IsNullOrWhiteSpace(s.IconDataBase64)
+                    ? null
+                    : Convert.FromBase64String(s.IconDataBase64)
             })
             .ToList();
     }
@@ -123,7 +134,14 @@ public partial class FinderViewModel : ObservableObject
                 BatteryTimeRemaining = await _metrics.GetBatteryTimeRemainingAsync().ConfigureAwait(false);
                 ClockText = DateTime.Now.ToString(_settings.Current.TimeFormat);
                 DateText = DateTime.Now.ToString(_settings.Current.DateFormat);
-                WeatherText = _settings.Current.ShowWeather ? _weather.GetCurrentCondition() : "—";
+                if (_settings.Current.ShowWeather)
+                {
+                    await _weather.RefreshAsync(
+                        _settings.Current.WeatherLatitude,
+                        _settings.Current.WeatherLongitude).ConfigureAwait(false);
+                    WeatherText = $"{_weather.GetCurrentCondition()} {_weather.GetCurrentCelsius():0}°";
+                }
+                else WeatherText = "—";
                 if (!_traySyncedFromIpc)
                     TrayIcons = await _trayMirror.GetIconsAsync().ConfigureAwait(false);
             }
@@ -142,17 +160,6 @@ public sealed class TrayProxyItem
     public nint OwnerWindow { get; init; }
     public uint IconId { get; init; }
     public byte[]? IconData { get; init; }
-}
-
-public interface ISystemMetricsService
-{
-    Task<double> GetCpuUsageAsync();
-    Task<double> GetMemoryUsageAsync();
-    Task<double> GetGpuUsageAsync();
-    Task<double> GetDiskUsageAsync();
-    Task<double> GetNetworkKbpsAsync();
-    Task<int> GetBatteryPercentAsync();
-    Task<string> GetBatteryTimeRemainingAsync();
 }
 
 public interface ITrayMirrorFacade
@@ -180,63 +187,4 @@ public sealed class TrayMirrorFacade : ITrayMirrorFacade
     }
 
     public void ForwardClick(TrayProxyItem item) => _mirror.ForwardClick(item.OwnerWindow, item.IconId);
-}
-
-public sealed class WmiSystemMetricsService : ISystemMetricsService
-{
-    public Task<double> GetCpuUsageAsync()
-    {
-        if (!OperatingSystem.IsWindows()) return Task.FromResult(0.0);
-        try
-        {
-            using var searcher = new ManagementObjectSearcher(
-                "SELECT LoadPercentage FROM Win32_Processor");
-            foreach (ManagementObject obj in searcher.Get())
-            {
-                return Task.FromResult(Convert.ToDouble(obj["LoadPercentage"]));
-            }
-        }
-        catch { }
-        return Task.FromResult(0.0);
-    }
-
-    public Task<double> GetMemoryUsageAsync()
-    {
-        if (!OperatingSystem.IsWindows()) return Task.FromResult(0.0);
-        try
-        {
-            using var searcher = new ManagementObjectSearcher(
-                "SELECT TotalVisibleMemorySize,FreePhysicalMemory FROM Win32_OperatingSystem");
-            foreach (ManagementObject obj in searcher.Get())
-            {
-                var total = Convert.ToDouble(obj["TotalVisibleMemorySize"]);
-                var free = Convert.ToDouble(obj["FreePhysicalMemory"]);
-                return Task.FromResult(total > 0 ? (total - free) / total * 100 : 0);
-            }
-        }
-        catch { }
-        return Task.FromResult(0.0);
-    }
-
-    public Task<double> GetGpuUsageAsync() => Task.FromResult(0.0);
-    public Task<double> GetDiskUsageAsync() => Task.FromResult(0.0);
-    public Task<double> GetNetworkKbpsAsync() => Task.FromResult(0.0);
-
-    public Task<int> GetBatteryPercentAsync()
-    {
-        if (!OperatingSystem.IsWindows()) return Task.FromResult(100);
-        try
-        {
-            using var searcher = new ManagementObjectSearcher(
-                "SELECT EstimatedChargeRemaining FROM Win32_Battery");
-            foreach (ManagementObject obj in searcher.Get())
-            {
-                return Task.FromResult(Convert.ToInt32(obj["EstimatedChargeRemaining"]));
-            }
-        }
-        catch { }
-        return Task.FromResult(100);
-    }
-
-    public Task<string> GetBatteryTimeRemainingAsync() => Task.FromResult(string.Empty);
 }

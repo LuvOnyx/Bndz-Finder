@@ -12,6 +12,7 @@ public sealed record FolderStackEntry
     public double FanRadius { get; init; }
     public double GridX { get; init; }
     public double GridY { get; init; }
+    public string IconCachePath { get; init; } = string.Empty;
 }
 
 public static class FolderStackLayoutHelper

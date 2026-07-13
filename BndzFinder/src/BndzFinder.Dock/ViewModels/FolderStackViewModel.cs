@@ -17,12 +17,20 @@ public partial class FolderStackViewModel : ObservableObject
     [ObservableProperty] private IReadOnlyList<FolderStackEntry> _entries = [];
     [ObservableProperty] private string _folderPath = string.Empty;
 
-    public FolderStackViewModel(string folderPath, FolderStackService? stacks = null, IIconPipeline? icons = null)
+    public FolderStackViewModel(
+        string folderPath,
+        FolderStackView view = FolderStackView.Automatic,
+        FolderSortMode sort = FolderSortMode.Name,
+        FolderStackService? stacks = null,
+        IIconPipeline? icons = null)
     {
         FolderPath = folderPath;
+        ViewMode = view;
+        SortMode = sort;
         _stacks = stacks ?? new FolderStackService();
         _icons = icons ?? new MacStyleIconPipeline();
         Refresh();
+        _ = LoadIconsAsync();
     }
 
     [RelayCommand]
@@ -33,6 +41,7 @@ public partial class FolderStackViewModel : ObservableObject
     {
         ViewMode = view;
         Refresh();
+        _ = LoadIconsAsync();
     }
 
     [RelayCommand]
@@ -40,6 +49,7 @@ public partial class FolderStackViewModel : ObservableObject
     {
         SortMode = sort;
         Refresh();
+        _ = LoadIconsAsync();
     }
 
     [RelayCommand]
@@ -49,13 +59,13 @@ public partial class FolderStackViewModel : ObservableObject
         {
             FolderPath = entry.Path;
             Refresh();
+            await LoadIconsAsync().ConfigureAwait(false);
             return;
         }
         if (OperatingSystem.IsWindows())
         {
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(entry.Path) { UseShellExecute = true });
         }
-        await Task.CompletedTask;
     }
 
     public void Refresh()
@@ -64,5 +74,27 @@ public partial class FolderStackViewModel : ObservableObject
         Entries = _stacks.BuildLayout(paths, ViewMode)
             .Select((e, i) => e with { Index = i })
             .ToList();
+    }
+
+    private async Task LoadIconsAsync()
+    {
+        var updated = new List<FolderStackEntry>(Entries.Count);
+        foreach (var entry in Entries)
+        {
+            var iconPath = string.Empty;
+            try
+            {
+                await _icons.ProcessAsync(entry.Path).ConfigureAwait(false);
+                iconPath = _icons.GetCachePath(entry.Path);
+            }
+            catch
+            {
+                // Protected or transient paths can fail icon extraction.
+            }
+
+            updated.Add(entry with { IconCachePath = iconPath });
+        }
+
+        Entries = updated;
     }
 }

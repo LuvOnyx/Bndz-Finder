@@ -22,7 +22,8 @@ function Test-BndzWinUiRuntime {
     $dir = Split-Path -Parent $ExePath
     $required = @(
         'Microsoft.ui.xaml.dll',
-        'Microsoft.WindowsAppRuntime.dll'
+        'Microsoft.WindowsAppRuntime.dll',
+        'Microsoft.WindowsAppRuntime.Bootstrap.dll'
     )
 
     $missing = @()
@@ -46,7 +47,7 @@ function Format-BndzExitCodeHint {
         ) -join "`n"
     }
 
-    return 'Common causes: another instance running, missing Windows App SDK runtime, or a startup exception.'
+    return 'Common causes: missing Windows App SDK runtime DLLs beside the exe, bootstrap failure (0x80670016), or a startup exception.'
 }
 
 Export-ModuleMember -Function Get-BndzAppExe, Test-BndzWinUiRuntime, Format-BndzExitCodeHint

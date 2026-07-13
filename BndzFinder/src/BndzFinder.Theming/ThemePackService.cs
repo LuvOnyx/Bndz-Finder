@@ -16,6 +16,10 @@ public sealed class ThemePackManifest
     public string? Delimiter { get; init; }
     public string? TimeSkin { get; init; }
     public string? CalendarSkin { get; init; }
+    public string? Wallpaper { get; init; }
+    public string? AccentColor { get; init; }
+    public string? FontFamily { get; init; }
+    public string? Description { get; init; }
 }
 
 public interface IThemePackService

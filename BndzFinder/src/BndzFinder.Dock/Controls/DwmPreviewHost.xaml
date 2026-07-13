@@ -1,0 +1,12 @@
+<UserControl
+    x:Class="BndzFinder.Dock.Controls.DwmPreviewHost"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Border
+        x:Name="HostSurface"
+        CornerRadius="12"
+        Background="#FF101010"
+        BorderBrush="#30FFFFFF"
+        BorderThickness="1" />
+</UserControl>

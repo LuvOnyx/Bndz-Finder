@@ -108,11 +108,10 @@ public sealed class MacStyleIconPipeline : IIconPipeline
 
     private static void DrawSourceIcon(SKCanvas canvas, string targetPath, SKRect rect, float cornerRadius)
     {
-        if (File.Exists(targetPath) &&
-            (targetPath.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
-             || targetPath.EndsWith(".ico", StringComparison.OrdinalIgnoreCase)))
+        var sourcePath = ResolveSourceIconPath(targetPath);
+        if (!string.IsNullOrWhiteSpace(sourcePath) && File.Exists(sourcePath))
         {
-            using var bitmap = SKBitmap.Decode(targetPath);
+            using var bitmap = SKBitmap.Decode(sourcePath);
             if (bitmap is not null)
             {
                 canvas.DrawBitmap(bitmap, rect);
@@ -122,9 +121,40 @@ public sealed class MacStyleIconPipeline : IIconPipeline
 
         using var paint = new SKPaint
         {
-            Color = new SKColor(0x2D, 0x9C, 0xDB),
+            Color = new SKColor(0x3A, 0x3A, 0x3C),
             IsAntialias = true
         };
         canvas.DrawRoundRect(rect, cornerRadius, cornerRadius, paint);
+
+        var label = Path.GetFileNameWithoutExtension(targetPath);
+        if (string.IsNullOrWhiteSpace(label)) label = "?";
+        label = label.Length > 2 ? label[..2].ToUpperInvariant() : label.ToUpperInvariant();
+
+        using var textPaint = new SKPaint
+        {
+            Color = SKColors.White,
+            IsAntialias = true,
+            TextAlign = SKTextAlign.Center,
+            TextSize = rect.Width * 0.38f,
+            Typeface = SKTypeface.FromFamilyName("Segoe UI Variable Display", SKFontStyleWeight.Bold, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright),
+            FakeBoldText = true
+        };
+        canvas.DrawText(label, rect.MidX, rect.MidY + textPaint.TextSize * 0.35f, textPaint);
+    }
+
+    private static string? ResolveSourceIconPath(string targetPath)
+    {
+        if (string.IsNullOrWhiteSpace(targetPath)) return null;
+        if (File.Exists(targetPath) &&
+            (targetPath.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+             || targetPath.EndsWith(".ico", StringComparison.OrdinalIgnoreCase)))
+            return targetPath;
+
+        if (!OperatingSystem.IsWindows()) return null;
+
+        var temp = Path.Combine(Path.GetTempPath(), "BndzFinder", "icon-src",
+            Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(targetPath.ToLowerInvariant()))) + ".png");
+        return WindowsFileIconExtractor.TryExtractToPng(targetPath, temp) ? temp : null;
     }
 }

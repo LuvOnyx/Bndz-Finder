@@ -4,6 +4,17 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace BndzFinder.Launchpad.Controls;
 
+public sealed class LaunchpadAppItem
+{
+    public required AppCatalogEntry Entry { get; init; }
+    public required LaunchpadViewModel ViewModel { get; init; }
+    public Uri? IconUri => Entry.IconUri;
+    public string Name => Entry.Name;
+    public int IconSize => ViewModel.IconSize;
+    public int CellSize => ViewModel.CellSize;
+    public Visibility LabelVisibility => ViewModel.HideLabels ? Visibility.Collapsed : Visibility.Visible;
+}
+
 public sealed partial class LaunchpadControl : UserControl
 {
     public static readonly DependencyProperty ViewModelProperty =
@@ -25,8 +36,8 @@ public sealed partial class LaunchpadControl : UserControl
         };
         AppGrid.ItemClick += (_, e) =>
         {
-            if (ViewModel is not null && e.ClickedItem is AppCatalogEntry entry)
-                ViewModel.LaunchCommand.Execute(entry);
+            if (ViewModel is not null && e.ClickedItem is LaunchpadAppItem item)
+                ViewModel.LaunchCommand.Execute(item.Entry);
         };
     }
 
@@ -36,14 +47,24 @@ public sealed partial class LaunchpadControl : UserControl
         ViewModel.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName is nameof(LaunchpadViewModel.FilteredApps))
-                AppGrid.ItemsSource = ViewModel.FilteredApps;
+                RefreshGrid();
             else if (args.PropertyName is nameof(LaunchpadViewModel.DisplayPage)
                      or nameof(LaunchpadViewModel.TotalPages)
-                     or nameof(LaunchpadViewModel.FilteredCount))
+                     or nameof(LaunchpadViewModel.FilteredCount)
+                     or nameof(LaunchpadViewModel.IconSize)
+                     or nameof(LaunchpadViewModel.HideLabels))
                 UpdatePagination();
         };
-        AppGrid.ItemsSource = ViewModel.FilteredApps;
+        RefreshGrid();
         UpdatePagination();
+    }
+
+    private void RefreshGrid()
+    {
+        if (ViewModel is null) return;
+        AppGrid.ItemsSource = ViewModel.FilteredApps
+            .Select(a => new LaunchpadAppItem { Entry = a, ViewModel = ViewModel })
+            .ToList();
     }
 
     private void UpdatePagination()

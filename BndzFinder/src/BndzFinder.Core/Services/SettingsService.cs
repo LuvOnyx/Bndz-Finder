@@ -124,6 +124,8 @@ public sealed class SettingsService : ISettingsService
                     _current.GlobalBlurValue = defaults.GlobalBlurValue;
                     _current.ActiveDockSkin = defaults.ActiveDockSkin;
                     _current.ActiveIconTheme = defaults.ActiveIconTheme;
+                    _current.ActiveWallpaper = defaults.ActiveWallpaper;
+                    _current.UiFontFamily = defaults.UiFontFamily;
                     break;
                 default:
                     _current = new BndzFinderSettings();

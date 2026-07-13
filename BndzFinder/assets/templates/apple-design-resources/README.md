@@ -1,36 +1,41 @@
-# Apple Design Resources (required for premium parity)
+# Apple Design Resources
 
-## What is implemented in code today
+## Bundled automatically (no API key)
 
-| Piece | Source | Status |
-|-------|--------|--------|
-| Dock pill metrics (24px radius, margins, shadow) | `AppleDesignMetrics` — aligned with Apple UI Kit | **In code** |
-| App icon squircle (1024 canvas, 824 content, 22.37% radius) | Apple App Icon Template proportions | **In code** via `AppleIconShellRenderer` |
-| App icon gloss/shadow overlay | Programmatic shell OR imported PNG | **Programmatic fallback**; PNG optional |
-| System icons (Finder, Trash, …) | [macosicons.com](https://macosicons.com/) | **Import required** — see below |
-| Dock chrome reference PNG | Apple Figma/Sketch UI Kit export | **Manual import** |
+| Asset | How |
+|-------|-----|
+| System dock icons (Finder, Trash, …) | `SystemIconFallbackGenerator` on first run — Apple squircle proportions |
+| Default theme pack `sequoia-default` | `BundledAssetGenerator` — wallpapers, dock glass skin, icon shell |
+| UI font | Segoe UI Variable Display (Windows 11); SF Pro optional via import script |
+| App icon gloss shell | Generated PNG or optional Apple template import |
 
-## What you must import (not bundled — licensing)
+## Optional imports (higher fidelity)
 
-### 1. System icons — macosicons.com
+### SF Pro fonts
 
 ```powershell
-$env:MACOSICONS_API_KEY = 'your-key'   # https://docs.macosicons.com/api-management
-pwsh -File BndzFinder/scripts/import-macos-icons.ps1
+pwsh -File BndzFinder/scripts/import-apple-design-resources.ps1 -ImportSfPro
 ```
 
-### 2. Apple app icon shell PNG (optional, improves gloss fidelity)
+### Official Apple app icon shell PNG
 
-Export the **App Icon Template** layer from [developer.apple.com/design/resources](https://developer.apple.com/design/resources/) as `app-icon-shell.png` (1024×1024), then:
+Export from [developer.apple.com/design/resources](https://developer.apple.com/design/resources/) then:
 
 ```powershell
 pwsh -File BndzFinder/scripts/import-apple-design-resources.ps1 -AppIconShellPath 'C:\path\to\shell.png'
 ```
 
-### 3. Dock reference (layout tuning only)
+### macosicons.com (optional enhancement)
 
-Download **macOS dock template** from [macosicons.com/resources](https://macosicons.com/resources) or export from Apple macOS UI Kit, save as `dock-reference.png`.
+```powershell
+$env:MACOSICONS_API_KEY = 'your-key'
+pwsh -File BndzFinder/scripts/import-macos-icons.ps1
+```
 
-## Removed placeholders
+Official macosicons PNGs override generated fallbacks when present in `assets/icons/system/`.
 
-The old hand-drawn `dock-icon-shell.svg` and `icons/system/*.svg` files were **not** official assets and have been removed.
+## Theme packs
+
+Preferences → **Themes** lets you pick installed packs, switch wallpapers, import `.zip` packs, and apply accent + font settings.
+
+Default pack installs to `%AppData%\BndzFinder\themes\sequoia-default\` on first launch.

@@ -7,9 +7,11 @@ public interface IShellBridgeService
 {
     event EventHandler<string>? HotkeyPressed;
     event EventHandler<long>? MinimizeCompleted;
+    event EventHandler<string>? MinimizeStarted;
     event EventHandler<long>? RestoreRequested;
     event EventHandler<string>? TrayIconsUpdated;
     event EventHandler<string>? WindowListUpdated;
+    event EventHandler<string>? ProgressUpdated;
     Task StartAsync(CancellationToken cancellationToken = default);
     Task RequestMinimizeAsync(long hwnd, CancellationToken cancellationToken = default);
     Task RequestRestoreAsync(long hwnd, CancellationToken cancellationToken = default);
@@ -31,9 +33,11 @@ public sealed class ShellBridgeService : IShellBridgeService, IAsyncDisposable
 
     public event EventHandler<string>? HotkeyPressed;
     public event EventHandler<long>? MinimizeCompleted;
+    public event EventHandler<string>? MinimizeStarted;
     public event EventHandler<long>? RestoreRequested;
     public event EventHandler<string>? TrayIconsUpdated;
     public event EventHandler<string>? WindowListUpdated;
+    public event EventHandler<string>? ProgressUpdated;
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
@@ -70,6 +74,9 @@ public sealed class ShellBridgeService : IShellBridgeService, IAsyncDisposable
                 case ShellHostMessageType.MinimizeCompleted:
                     MinimizeCompleted?.Invoke(this, message.WindowHandle);
                     break;
+                case ShellHostMessageType.MinimizeStarted:
+                    MinimizeStarted?.Invoke(this, message.Payload ?? string.Empty);
+                    break;
                 case ShellHostMessageType.RestoreRequested:
                     RestoreRequested?.Invoke(this, message.WindowHandle);
                     break;
@@ -78,6 +85,9 @@ public sealed class ShellBridgeService : IShellBridgeService, IAsyncDisposable
                     break;
                 case ShellHostMessageType.WindowListUpdated:
                     WindowListUpdated?.Invoke(this, message.Payload ?? "[]");
+                    break;
+                case ShellHostMessageType.ProgressUpdated:
+                    ProgressUpdated?.Invoke(this, message.Payload ?? "[]");
                     break;
             }
         }
@@ -155,6 +165,7 @@ public interface IShellOverlayController
     void ToggleDock();
     void ToggleFinder();
     void SetDockVisible(bool visible);
+    void SetFinderVisible(bool visible);
     void ShowLaunchpad();
     void HideLaunchpad();
     void ToggleStageManager();
@@ -194,6 +205,14 @@ public sealed class ShellOverlayController : IShellOverlayController
         if (_dockVisible == visible) return;
         _dockVisible = visible;
         DockVisibilityChanged?.Invoke();
+    }
+
+    public void SetFinderVisible(bool visible)
+    {
+        if (!_settings.Current.FinderEnabled) return;
+        if (_finderVisible == visible) return;
+        _finderVisible = visible;
+        FinderVisibilityChanged?.Invoke();
     }
 
     public void ToggleFinder()
