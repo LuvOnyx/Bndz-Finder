@@ -19,7 +19,10 @@ public partial class LaunchpadViewModel : ObservableObject
     [ObservableProperty] private bool _isOverlayVisible;
 
     public int PageSize => 35;
-    public int IconSize => _settings.Current.LaunchpadIconSize;
+    public int IconSize => _settings.Current.LaunchpadHdIcons
+        ? Math.Max(_settings.Current.LaunchpadIconSize, 96)
+        : _settings.Current.LaunchpadIconSize;
+    public int CellSize => IconSize + (HideLabels ? 24 : 48);
     public bool HideLabels => _settings.Current.LaunchpadHideLabels;
     public int TotalPages => Math.Max(1, (int)Math.Ceiling(FilteredCount / (double)PageSize));
     public int DisplayPage => CurrentPage + 1;
@@ -34,6 +37,12 @@ public partial class LaunchpadViewModel : ObservableObject
         _catalog = catalog ?? new AppCatalogService();
         _overlays = overlays;
         _iconPipeline = iconPipeline ?? new MacStyleIconPipeline();
+        _settings.SettingsChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(IconSize));
+            OnPropertyChanged(nameof(CellSize));
+            OnPropertyChanged(nameof(HideLabels));
+        };
         _ = LoadAsync();
     }
 

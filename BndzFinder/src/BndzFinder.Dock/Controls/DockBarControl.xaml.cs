@@ -174,6 +174,25 @@ public sealed partial class DockBarControl : UserControl
         IconCanvas.Height = ViewModel.DockBarHeight;
     }
 
+    public (double X, double Y)? GetIconScreenCenter(string itemId)
+    {
+        foreach (var control in _iconControls)
+        {
+            if (control.IconViewModel?.Layout?.Item?.Id != itemId) continue;
+            if (control.ActualWidth <= 0 || control.ActualHeight <= 0) continue;
+
+            var transform = control.TransformToVisual(null);
+            if (transform is null) continue;
+
+            var center = transform.TransformPoint(new Windows.Foundation.Point(
+                control.ActualWidth / 2,
+                control.ActualHeight / 2));
+            return (center.X, center.Y);
+        }
+
+        return null;
+    }
+
     private void ShowFolderStack(string folderPath)
     {
         _folderFlyout ??= new Flyout { Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.Top };

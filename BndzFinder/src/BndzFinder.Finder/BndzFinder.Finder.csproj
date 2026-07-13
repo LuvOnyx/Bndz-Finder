@@ -14,6 +14,7 @@
     <ProjectReference Include="..\BndzFinder.Shell\BndzFinder.Shell.csproj" />
     <ProjectReference Include="..\BndzFinder.Theming\BndzFinder.Theming.csproj" />
     <ProjectReference Include="..\BndzFinder.Dock\BndzFinder.Dock.csproj" />
+    <ProjectReference Include="..\BndzFinder.StageManager\BndzFinder.StageManager.csproj" />
   </ItemGroup>
   <Import Project="..\..\WinUiClassLibrary.props" />
 </Project>

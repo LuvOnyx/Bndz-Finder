@@ -233,6 +233,8 @@ internal sealed class ShellHostWorker : BackgroundService
         {
             case ShellHostMessageType.RestoreRequested:
                 _logger.LogDebug("Restore requested for {Hwnd}", message.WindowHandle);
+                if (OperatingSystem.IsWindows())
+                    WindowOperations.FocusWindow((nint)message.WindowHandle);
                 _ = _server.BroadcastAsync(new ShellHostMessage
                 {
                     Type = ShellHostMessageType.RestoreCompleted,
@@ -303,7 +305,9 @@ internal sealed class ShellHostWorker : BackgroundService
                 targetY: targetY)
         }, CancellationToken.None).ConfigureAwait(false);
 
-        await _animator.AnimateAsync(request, _settings.Current.MinimizeEffect, CancellationToken.None).ConfigureAwait(false);
+        var durationMs = (int)(350 / Math.Max(0.25, _settings.Current.MinimizeAnimationSpeed));
+        await Task.Delay(durationMs, CancellationToken.None).ConfigureAwait(false);
+
         await _server.BroadcastAsync(new ShellHostMessage
         {
             Type = ShellHostMessageType.MinimizeCompleted,

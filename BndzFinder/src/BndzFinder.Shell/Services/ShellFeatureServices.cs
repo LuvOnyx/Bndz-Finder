@@ -10,11 +10,12 @@ public sealed class WeatherService
     private static readonly HttpClient Client = new() { Timeout = TimeSpan.FromSeconds(8) };
     private string _condition = "Clear";
     private double _celsius = 22;
+    private readonly List<string> _forecast = ["Clear", "Partly Cloudy", "Cloudy"];
     private DateTimeOffset _lastFetch = DateTimeOffset.MinValue;
 
     public string GetCurrentCondition() => _condition;
     public double GetCurrentCelsius() => _celsius;
-    public IReadOnlyList<string> GetForecast() => [_condition, "Partly Cloudy", "Rain"];
+    public IReadOnlyList<string> GetForecast() => _forecast;
 
     public async Task RefreshAsync(double latitude, double longitude, CancellationToken cancellationToken = default)
     {
@@ -24,13 +25,22 @@ public sealed class WeatherService
         try
         {
             var url =
-                $"https://api.open-meteo.com/v1/forecast?latitude={latitude:F4}&longitude={longitude:F4}&current_weather=true";
-            var payload = await Client.GetFromJsonAsync<OpenMeteoResponse>(url, cancellationToken).ConfigureAwait(false);
+                $"https://api.open-meteo.com/v1/forecast?latitude={latitude:F4}&longitude={longitude:F4}" +
+                "&current_weather=true&daily=weathercode,temperature_2m_max&timezone=auto&forecast_days=3";
+            var payload = await Client.GetFromJsonAsync<OpenMeteoForecastResponse>(url, cancellationToken).ConfigureAwait(false);
             if (payload?.CurrentWeather is null)
                 return;
 
             _celsius = payload.CurrentWeather.Temperature;
             _condition = MapWeatherCode(payload.CurrentWeather.WeatherCode);
+            _forecast.Clear();
+            _forecast.Add(_condition);
+            if (payload.Daily?.WeatherCode is { Length: > 0 } codes)
+            {
+                foreach (var code in codes.Skip(1).Take(2))
+                    _forecast.Add(MapWeatherCode(code));
+            }
+
             _lastFetch = DateTimeOffset.UtcNow;
         }
         catch
@@ -53,10 +63,19 @@ public sealed class WeatherService
         _ => "Clear"
     };
 
-    private sealed class OpenMeteoResponse
+    private sealed class OpenMeteoForecastResponse
     {
         [JsonPropertyName("current_weather")]
         public OpenMeteoCurrentWeather? CurrentWeather { get; init; }
+
+        [JsonPropertyName("daily")]
+        public OpenMeteoDaily? Daily { get; init; }
+    }
+
+    private sealed class OpenMeteoDaily
+    {
+        [JsonPropertyName("weathercode")]
+        public int[]? WeatherCode { get; init; }
     }
 
     private sealed class OpenMeteoCurrentWeather

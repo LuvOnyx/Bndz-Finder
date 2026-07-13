@@ -1,0 +1,12 @@
+<UserControl
+    x:Class="BndzFinder.Preferences.Controls.HotkeyCaptureBox"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    IsTabStop="True">
+
+    <StackPanel Orientation="Horizontal" Spacing="8">
+        <TextBox x:Name="DisplayBox" Width="220" IsReadOnly="True" />
+        <Button x:Name="RecordButton" Content="Record" Click="OnRecordClick" />
+        <Button Content="Clear" Click="OnClearClick" />
+    </StackPanel>
+</UserControl>

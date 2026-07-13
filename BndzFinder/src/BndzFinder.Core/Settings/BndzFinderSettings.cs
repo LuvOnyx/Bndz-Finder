@@ -25,7 +25,7 @@ public sealed class BndzFinderSettings
     public int EdgePosition { get; set; }
     public int HideDockDelayMs { get; set; } = 400;
     public bool ShowDockActivationMouse { get; set; } = true;
-    public bool ShowDockActivationBar { get; set; }
+    public bool ShowDockActivationBar { get; set; } = true;
     public int ActivationBarWeight { get; set; } = 4;
     public int ActivationBarHeight { get; set; } = 3;
     public int ActivationBarOffset { get; set; }
@@ -36,9 +36,9 @@ public sealed class BndzFinderSettings
     public MinimizeEffect MinimizeEffect { get; set; } = MinimizeEffect.Genie;
     public double MinimizeAnimationSpeed { get; set; } = 1.0;
     public bool MinimizeDynamics { get; set; } = true;
-    public bool MinimizeIntoAppIcon { get; set; }
+    public bool MinimizeIntoAppIcon { get; set; } = true;
     public bool HideTaskbarWhenDockShown { get; set; } = true;
-    public bool HideTaskbarAllMonitors { get; set; }
+    public bool HideTaskbarAllMonitors { get; set; } = true;
     public bool AutoHideTaskbarAtStartup { get; set; } = true;
     public bool WindowsBorderMode { get; set; } = true;
     public bool CenterNewWindows { get; set; }
@@ -103,8 +103,10 @@ public sealed class BndzFinderSettings
     public bool IconReflectionEnabled { get; set; } = true;
     public double IconReflectionOpacity { get; set; } = 0.35;
     public double IconReflectionBlur { get; set; } = 0.5;
-    public string? ActiveIconTheme { get; set; }
-    public string? ActiveDockSkin { get; set; }
+    public string? ActiveIconTheme { get; set; } = "sequoia-default";
+    public string? ActiveDockSkin { get; set; } = "sequoia-default";
+    public string? ActiveWallpaper { get; set; } = "wallpaper-sequoia.jpg";
+    public string UiFontFamily { get; set; } = "Segoe UI Variable Display";
 
     // Screen round (MyDockFinder ScreenRound)
     public bool ScreenRoundEnabled { get; set; } = true;

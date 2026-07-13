@@ -1,9 +1,12 @@
 using BndzFinder.Core.Models;
-using BndzFinder.Preferences.Controls;
 using BndzFinder.Preferences.Localization;
 using BndzFinder.Preferences.ViewModels;
+using BndzFinder.Theming;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using WinRT.Interop;
+using Windows.Storage.Pickers;
 
 namespace BndzFinder.Preferences.Controls;
 
@@ -48,10 +51,7 @@ public sealed partial class PreferencesShellControl : UserControl
         DockOpacitySlider.Value = ViewModel.Settings.DockOpacity * 100;
         CornerRadiusSlider.Value = ViewModel.Settings.DockCornerRadius;
         BindWidgetToggles();
-        DockHotkeyBox.Text = FormatHotkey(ViewModel.Settings.DockHotkey);
-        FinderHotkeyBox.Text = FormatHotkey(ViewModel.Settings.FinderHotkey);
-        LaunchpadHotkeyBox.Text = FormatHotkey(ViewModel.Settings.LaunchpadHotkey);
-        StageManagerHotkeyBox.Text = FormatHotkey(ViewModel.Settings.StageManagerHotkey);
+        BindHotkeys();
         HotCornerLeftBox.ItemsSource = Enum.GetValues<HotCornerAction>();
         HotCornerRightBox.ItemsSource = Enum.GetValues<HotCornerAction>();
         HotCornerLeftBox.SelectedItem = ViewModel.Settings.HotCorners.BottomLeft;
@@ -66,6 +66,7 @@ public sealed partial class PreferencesShellControl : UserControl
         LockIconsToggle.IsOn = ViewModel.Settings.LockIcons;
         EdgeActivationToggle.IsOn = ViewModel.Settings.ShowDockActivationMouse;
         LaunchpadIconSizeSlider.Value = ViewModel.Settings.LaunchpadIconSize;
+        LaunchpadHdIconsToggle.IsOn = ViewModel.Settings.LaunchpadHdIcons;
         LaunchpadHideLabelsToggle.IsOn = ViewModel.Settings.LaunchpadHideLabels;
         LaunchpadSourceBox.ItemsSource = new[] { "startmenu", "desktop", "both" };
         LaunchpadSourceBox.SelectedItem = ViewModel.Settings.LaunchpadIconSource;
@@ -75,6 +76,26 @@ public sealed partial class PreferencesShellControl : UserControl
         MicrophonePanelToggle.IsOn = ViewModel.Settings.ShowMicrophone;
         TrayWaitSlider.Value = ViewModel.Settings.TrayIconWaitTimeMs;
         AlwaysShowTrayToggle.IsOn = ViewModel.Settings.AlwaysShowAllTrayIcons;
+        BindThemes();
+    }
+
+    private void BindHotkeys()
+    {
+        DockHotkeyBox.Binding = ViewModel!.Settings.DockHotkey;
+        FinderHotkeyBox.Binding = ViewModel.Settings.FinderHotkey;
+        LaunchpadHotkeyBox.Binding = ViewModel.Settings.LaunchpadHotkey;
+        StageManagerHotkeyBox.Binding = ViewModel.Settings.StageManagerHotkey;
+    }
+
+    private void BindThemes()
+    {
+        ViewModel!.RefreshThemes();
+        ThemePackBox.ItemsSource = ViewModel.InstalledThemes;
+        ThemePackBox.SelectedItem = ViewModel.SelectedTheme;
+        WallpaperBox.ItemsSource = ViewModel.AvailableWallpapers;
+        WallpaperBox.SelectedItem = ViewModel.SelectedWallpaper;
+        ThemeDescription.Text = ViewModel.SelectedTheme?.Description
+            ?? "macOS Sequoia default — dock glass, icon shell, and gradient wallpapers.";
     }
 
     private void BindWidgetToggles()
@@ -109,6 +130,7 @@ public sealed partial class PreferencesShellControl : UserControl
         AdvancedSection.Visibility = tag == "Advanced" ? Visibility.Visible : Visibility.Collapsed;
         ThemesSection.Visibility = tag == "Themes" ? Visibility.Visible : Visibility.Collapsed;
         SectionTitle.Text = Loc.Get($"Section.{tag}");
+        if (tag == "Themes") BindThemes();
     }
 
     private async void OnSave(object sender, RoutedEventArgs e)
@@ -151,6 +173,7 @@ public sealed partial class PreferencesShellControl : UserControl
         ViewModel.Settings.LockIcons = LockIconsToggle.IsOn;
         ViewModel.Settings.ShowDockActivationMouse = EdgeActivationToggle.IsOn;
         ViewModel.Settings.LaunchpadIconSize = (int)LaunchpadIconSizeSlider.Value;
+        ViewModel.Settings.LaunchpadHdIcons = LaunchpadHdIconsToggle.IsOn;
         ViewModel.Settings.LaunchpadHideLabels = LaunchpadHideLabelsToggle.IsOn;
         if (LaunchpadSourceBox.SelectedItem is string source) ViewModel.Settings.LaunchpadIconSource = source;
         ViewModel.Settings.ShowAudio = AudioPanelToggle.IsOn;
@@ -170,11 +193,51 @@ public sealed partial class PreferencesShellControl : UserControl
         await ViewModel.BackupCommand.ExecuteAsync(null);
     }
 
-    private static string FormatHotkey(HotkeyBinding binding)
+    private void OnThemeSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        var parts = new List<string>();
-        if (!string.IsNullOrWhiteSpace(binding.Modifiers)) parts.Add(binding.Modifiers);
-        if (!string.IsNullOrWhiteSpace(binding.Key)) parts.Add(binding.Key);
-        return parts.Count == 0 ? "(none)" : string.Join(" + ", parts);
+        if (ViewModel is null || ThemePackBox.SelectedItem is not ThemePackManifest theme) return;
+        ViewModel.SelectedTheme = theme;
+        WallpaperBox.ItemsSource = ViewModel.AvailableWallpapers;
+        WallpaperBox.SelectedItem = ViewModel.SelectedWallpaper;
+        ThemeDescription.Text = theme.Description ?? $"{theme.Name} — accent {theme.AccentColor ?? "default"}";
+    }
+
+    private void OnWallpaperSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ViewModel is null || WallpaperBox.SelectedItem is not string wallpaper) return;
+        ViewModel.SelectedWallpaper = wallpaper;
+    }
+
+    private async void OnApplyTheme(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel is null) return;
+        await ViewModel.ApplyThemeCommand.ExecuteAsync(null);
+    }
+
+    private async void OnImportTheme(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel is null) return;
+
+        var window = FindParentWindow();
+        if (window is null) return;
+
+        var picker = new FileOpenPicker();
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(window));
+        picker.FileTypeFilter.Add(".zip");
+        var file = await picker.PickSingleFileAsync();
+        if (file is null) return;
+        await ViewModel.ImportThemeCommand.ExecuteAsync(file.Path);
+        BindThemes();
+    }
+
+    private Window? FindParentWindow()
+    {
+        DependencyObject? current = this;
+        while (current is not null)
+        {
+            if (current is Window window) return window;
+            current = VisualTreeHelper.GetParent(current);
+        }
+        return null;
     }
 }

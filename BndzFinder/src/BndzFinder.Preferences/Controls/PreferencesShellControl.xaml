@@ -82,6 +82,7 @@
                     <StackPanel x:Name="LaunchpadSection" Spacing="12" Visibility="Collapsed">
                         <TextBlock Text="Launchpad opens as an overlay via hotkey — not forced at startup." TextWrapping="WrapWholeWords" Opacity="0.8" />
                         <Slider x:Name="LaunchpadIconSizeSlider" Header="Icon size" Minimum="48" Maximum="128" />
+                        <ToggleSwitch x:Name="LaunchpadHdIconsToggle" Header="HD icons (256px pipeline)" />
                         <ToggleSwitch x:Name="LaunchpadHideLabelsToggle" Header="Hide app labels" />
                         <ComboBox x:Name="LaunchpadSourceBox" Header="App catalog source" Width="280" />
                     </StackPanel>
@@ -103,13 +104,13 @@
 
                     <StackPanel x:Name="AdvancedSection" Spacing="12" Visibility="Collapsed">
                         <TextBlock Text="Dock hotkey" />
-                        <TextBox x:Name="DockHotkeyBox" Width="280" IsReadOnly="True" />
+                        <local:HotkeyCaptureBox x:Name="DockHotkeyBox" />
                         <TextBlock Text="Finder hotkey" />
-                        <TextBox x:Name="FinderHotkeyBox" Width="280" IsReadOnly="True" />
+                        <local:HotkeyCaptureBox x:Name="FinderHotkeyBox" />
                         <TextBlock Text="Launchpad hotkey" />
-                        <TextBox x:Name="LaunchpadHotkeyBox" Width="280" IsReadOnly="True" />
+                        <local:HotkeyCaptureBox x:Name="LaunchpadHotkeyBox" />
                         <TextBlock Text="Stage Manager hotkey" />
-                        <TextBox x:Name="StageManagerHotkeyBox" Width="280" IsReadOnly="True" />
+                        <local:HotkeyCaptureBox x:Name="StageManagerHotkeyBox" />
                         <TextBlock Text="Bottom-left hot corner" />
                         <ComboBox x:Name="HotCornerLeftBox" Width="280" />
                         <TextBlock Text="Bottom-right hot corner" />
@@ -117,7 +118,15 @@
                     </StackPanel>
 
                     <StackPanel x:Name="ThemesSection" Spacing="12" Visibility="Collapsed">
-                        <Button Content="Backup settings" Click="OnBackup" />
+                        <TextBlock Text="Theme packs include dock skin, icon shell, wallpapers, accent, and UI font." TextWrapping="WrapWholeWords" Opacity="0.8" />
+                        <ComboBox x:Name="ThemePackBox" Header="Installed theme" Width="360" DisplayMemberPath="Name" SelectionChanged="OnThemeSelectionChanged" />
+                        <ComboBox x:Name="WallpaperBox" Header="Wallpaper" Width="360" SelectionChanged="OnWallpaperSelectionChanged" />
+                        <TextBlock x:Name="ThemeDescription" Opacity="0.75" TextWrapping="WrapWholeWords" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="Apply theme" Click="OnApplyTheme" />
+                            <Button Content="Import theme pack…" Click="OnImportTheme" />
+                            <Button Content="Backup settings" Click="OnBackup" />
+                        </StackPanel>
                     </StackPanel>
 
                     <Button x:Name="SaveButton" Content="Save" HorizontalAlignment="Left" Click="OnSave" />

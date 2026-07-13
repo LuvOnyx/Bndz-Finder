@@ -351,11 +351,23 @@ public sealed class WinEventHookService : IDisposable
 public sealed class TrayIconMirrorService
 {
     private const int TbPressButton = 0x0403;
+    private const int TbButtonCount = 0x0418;
+    private const int TbGetButtonInfo = 0x0440;
+    private const int TbGetImageList = 0x0402;
+    private const int TbifImage = 0x00000001;
+    private const int TbifText = 0x00000004;
+    private const int TbifState = 0x00000008;
+    private const int TbstateHidden = 0x00000008;
+    private const uint IldTransparent = 0x00000001;
 
     public IReadOnlyList<TrayIconInfo> GetVisibleTrayIcons()
     {
         if (!OperatingSystem.IsWindows()) return [];
-        return EnumerateTrayToolbar();
+
+        var results = new List<TrayIconInfo>();
+        CollectFromNotifyArea(results);
+        CollectFromOverflowArea(results);
+        return results;
     }
 
     public void ForwardClick(nint ownerWindow, uint iconId)
@@ -364,31 +376,113 @@ public sealed class TrayIconMirrorService
         SendMessage(ownerWindow, TbPressButton, (nint)iconId, new nint(1));
     }
 
-    private static List<TrayIconInfo> EnumerateTrayToolbar()
+    private static void CollectFromNotifyArea(List<TrayIconInfo> results)
     {
-        var results = new List<TrayIconInfo>();
         var trayWnd = FindWindow("Shell_TrayWnd", null);
-        if (trayWnd == nint.Zero) return results;
+        if (trayWnd == nint.Zero) return;
 
         var notifyWnd = FindWindowEx(trayWnd, nint.Zero, "TrayNotifyWnd", null);
-        if (notifyWnd == nint.Zero) return results;
+        if (notifyWnd == nint.Zero) return;
 
         var sysPager = FindWindowEx(notifyWnd, nint.Zero, "SysPager", null);
         var toolbarParent = sysPager != nint.Zero ? sysPager : notifyWnd;
         var toolbar = FindWindowEx(toolbarParent, nint.Zero, "ToolbarWindow32", null);
-        if (toolbar == nint.Zero) return results;
+        if (toolbar != nint.Zero)
+            EnumerateToolbar(toolbar, results);
+    }
 
-        var count = SendMessage(toolbar, 0x0418, nint.Zero, nint.Zero); // TB_BUTTONCOUNT
-        for (var i = 0; i < (int)count; i++)
+    private static void CollectFromOverflowArea(List<TrayIconInfo> results)
+    {
+        var overflowWnd = FindWindow("NotifyIconOverflowWindow", null);
+        if (overflowWnd == nint.Zero) return;
+
+        var toolbar = FindWindowEx(overflowWnd, nint.Zero, "ToolbarWindow32", null);
+        if (toolbar != nint.Zero)
+            EnumerateToolbar(toolbar, results);
+    }
+
+    private static void EnumerateToolbar(nint toolbar, List<TrayIconInfo> results)
+    {
+        var count = (int)SendMessage(toolbar, TbButtonCount, nint.Zero, nint.Zero);
+        if (count <= 0) return;
+
+        var imageList = SendMessage(toolbar, TbGetImageList, nint.Zero, nint.Zero);
+        if (imageList == nint.Zero)
+            imageList = SendMessage(toolbar, TbGetImageList, new nint(1), nint.Zero);
+
+        for (var i = 0; i < count; i++)
         {
+            var info = new TBBUTTONINFOW
+            {
+                cbSize = Marshal.SizeOf<TBBUTTONINFOW>(),
+                dwMask = TbifImage | TbifText | TbifState
+            };
+
+            if (SendMessage(toolbar, TbGetButtonInfo, (nint)i, ref info) == -1)
+                continue;
+
+            if ((info.fsState & TbstateHidden) != 0)
+                continue;
+
+            var tooltip = ReadToolbarText(toolbar, i) ?? $"Tray icon {i}";
+            byte[]? iconData = null;
+            if (imageList != nint.Zero && info.iImage >= 0)
+            {
+                var hIcon = ImageList_GetIcon(imageList, info.iImage, IldTransparent);
+                if (hIcon != nint.Zero)
+                {
+                    try { iconData = IconPngExporter.FromHIcon(hIcon, 32); }
+                    finally { DestroyIcon(hIcon); }
+                }
+            }
+
             results.Add(new TrayIconInfo
             {
-                Tooltip = $"Tray icon {i}",
+                Tooltip = tooltip,
                 OwnerWindow = toolbar,
-                IconId = (uint)i
+                IconId = (uint)i,
+                IconData = iconData
             });
         }
-        return results;
+    }
+
+    private static string? ReadToolbarText(nint toolbar, int index)
+    {
+        var buffer = new char[256];
+        var info = new TBBUTTONINFOW
+        {
+            cbSize = Marshal.SizeOf<TBBUTTONINFOW>(),
+            dwMask = TbifText,
+            pszText = Marshal.AllocHGlobal(buffer.Length * 2),
+            cchText = buffer.Length
+        };
+
+        try
+        {
+            if (SendMessage(toolbar, TbGetButtonInfo, (nint)index, ref info) == -1)
+                return null;
+            return Marshal.PtrToStringUni(info.pszText);
+        }
+        finally
+        {
+            if (info.pszText != nint.Zero)
+                Marshal.FreeHGlobal(info.pszText);
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct TBBUTTONINFOW
+    {
+        public int cbSize;
+        public int dwMask;
+        public int idCommand;
+        public int iImage;
+        public byte fsState;
+        public byte fsStyle;
+        public ushort cx;
+        public nint lParam;
+        public nint pszText;
+        public int cchText;
     }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
@@ -397,8 +491,17 @@ public sealed class TrayIconMirrorService
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern nint FindWindowEx(nint parent, nint childAfter, string? cls, string? wnd);
 
-    [DllImport("user32.dll")]
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "SendMessageW")]
     private static extern nint SendMessage(nint hWnd, int msg, nint wParam, nint lParam);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "SendMessageW")]
+    private static extern nint SendMessage(nint hWnd, int msg, nint wParam, ref TBBUTTONINFOW lParam);
+
+    [DllImport("comctl32.dll", CharSet = CharSet.Unicode)]
+    private static extern nint ImageList_GetIcon(nint himl, int i, uint flags);
+
+    [DllImport("user32.dll")]
+    private static extern bool DestroyIcon(nint hIcon);
 }
 
 public sealed class TrayIconInfo

@@ -33,7 +33,12 @@
                     </Button>
                 </StackPanel>
 
-                <Border Grid.Column="1" />
+                <Border Grid.Column="1">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                                  Visibility="{x:Bind StageStripVisibility, Mode=OneWay}">
+                        <StackPanel x:Name="StageStrip" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" />
+                    </ScrollViewer>
+                </Border>
 
                 <StackPanel x:Name="StatusCluster" Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                     <Button x:Name="CpuWidget" Style="{StaticResource FinderWidgetButton}" Visibility="Collapsed" Click="OnCpuClick">

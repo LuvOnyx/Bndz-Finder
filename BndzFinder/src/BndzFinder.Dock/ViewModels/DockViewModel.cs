@@ -143,6 +143,36 @@ public partial class DockViewModel : ObservableObject
         return WindowEnumerationService.FindMainWindowForExecutable(item.TargetPath).ToInt64();
     }
 
+    public string? FindItemIdForWindow(long hwnd)
+    {
+        foreach (var pair in _itemWindowHandles)
+        {
+            if (pair.Value == hwnd) return pair.Key;
+        }
+
+        if (!OperatingSystem.IsWindows()) return null;
+        try
+        {
+            _ = GetWindowThreadProcessId((nint)hwnd, out var pid);
+            if (pid == 0) return null;
+            using var process = System.Diagnostics.Process.GetProcessById((int)pid);
+            var exe = process.MainModule?.FileName;
+            if (string.IsNullOrWhiteSpace(exe)) return null;
+
+            foreach (var item in _effectiveItems)
+            {
+                if (item.TargetPath.Equals(exe, StringComparison.OrdinalIgnoreCase))
+                    return item.Id;
+            }
+        }
+        catch { }
+
+        return null;
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(nint hWnd, out uint lpdwProcessId);
+
     public void OnIconPointerExited() => _preview.OnIconExited();
 
     [RelayCommand]
@@ -247,6 +277,15 @@ public partial class DockViewModel : ObservableObject
         if (!OperatingSystem.IsWindows()) return;
         if (item.Kind == DockItemKind.Application || item.Kind == DockItemKind.File)
         {
+            var hwnd = (nint)ResolveWindowHandle(item);
+            if (hwnd != nint.Zero)
+            {
+                WindowOperations.FocusWindow(hwnd);
+                _runningApps.Add(item.Id);
+                RefreshLayout();
+                return;
+            }
+
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(item.TargetPath) { UseShellExecute = true });
             _runningApps.Add(item.Id);
             RefreshLayout();

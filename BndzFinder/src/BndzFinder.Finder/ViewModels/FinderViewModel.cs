@@ -1,4 +1,3 @@
-using System.Management;
 using BndzFinder.Core.Services;
 using BndzFinder.Shell.Services;
 using BndzFinder.Interop;
@@ -48,6 +47,7 @@ public partial class FinderViewModel : ObservableObject
     public bool ShowMediaControl => _settings.Current.ShowMediaControl;
     public bool ShowMicrophone => _settings.Current.ShowMicrophone;
     public bool ShowLyrics => _settings.Current.ShowLyrics;
+    public bool ShowStageManagerInFinder => _settings.Current.ShowStageManagerInFinder;
 
     public FinderViewModel(
         ISettingsService settings,
@@ -57,7 +57,7 @@ public partial class FinderViewModel : ObservableObject
         IThemePackResolver? themePacks = null)
     {
         _settings = settings;
-        _metrics = metrics ?? new WmiSystemMetricsService();
+        _metrics = metrics ?? new WindowsSystemMetricsService();
         _trayMirror = trayMirror ?? new TrayMirrorFacade(new TrayIconMirrorService());
         _weather = weather ?? new WeatherService();
         _themePacks = themePacks;
@@ -97,6 +97,7 @@ public partial class FinderViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowNotifications));
         OnPropertyChanged(nameof(ShowMicrophone));
         OnPropertyChanged(nameof(ShowLyrics));
+        OnPropertyChanged(nameof(ShowStageManagerInFinder));
     }
 
     [RelayCommand]
@@ -161,17 +162,6 @@ public sealed class TrayProxyItem
     public byte[]? IconData { get; init; }
 }
 
-public interface ISystemMetricsService
-{
-    Task<double> GetCpuUsageAsync();
-    Task<double> GetMemoryUsageAsync();
-    Task<double> GetGpuUsageAsync();
-    Task<double> GetDiskUsageAsync();
-    Task<double> GetNetworkKbpsAsync();
-    Task<int> GetBatteryPercentAsync();
-    Task<string> GetBatteryTimeRemainingAsync();
-}
-
 public interface ITrayMirrorFacade
 {
     Task<IReadOnlyList<TrayProxyItem>> GetIconsAsync();
@@ -197,63 +187,4 @@ public sealed class TrayMirrorFacade : ITrayMirrorFacade
     }
 
     public void ForwardClick(TrayProxyItem item) => _mirror.ForwardClick(item.OwnerWindow, item.IconId);
-}
-
-public sealed class WmiSystemMetricsService : ISystemMetricsService
-{
-    public Task<double> GetCpuUsageAsync()
-    {
-        if (!OperatingSystem.IsWindows()) return Task.FromResult(0.0);
-        try
-        {
-            using var searcher = new ManagementObjectSearcher(
-                "SELECT LoadPercentage FROM Win32_Processor");
-            foreach (ManagementObject obj in searcher.Get())
-            {
-                return Task.FromResult(Convert.ToDouble(obj["LoadPercentage"]));
-            }
-        }
-        catch { }
-        return Task.FromResult(0.0);
-    }
-
-    public Task<double> GetMemoryUsageAsync()
-    {
-        if (!OperatingSystem.IsWindows()) return Task.FromResult(0.0);
-        try
-        {
-            using var searcher = new ManagementObjectSearcher(
-                "SELECT TotalVisibleMemorySize,FreePhysicalMemory FROM Win32_OperatingSystem");
-            foreach (ManagementObject obj in searcher.Get())
-            {
-                var total = Convert.ToDouble(obj["TotalVisibleMemorySize"]);
-                var free = Convert.ToDouble(obj["FreePhysicalMemory"]);
-                return Task.FromResult(total > 0 ? (total - free) / total * 100 : 0);
-            }
-        }
-        catch { }
-        return Task.FromResult(0.0);
-    }
-
-    public Task<double> GetGpuUsageAsync() => Task.FromResult(0.0);
-    public Task<double> GetDiskUsageAsync() => Task.FromResult(0.0);
-    public Task<double> GetNetworkKbpsAsync() => Task.FromResult(0.0);
-
-    public Task<int> GetBatteryPercentAsync()
-    {
-        if (!OperatingSystem.IsWindows()) return Task.FromResult(100);
-        try
-        {
-            using var searcher = new ManagementObjectSearcher(
-                "SELECT EstimatedChargeRemaining FROM Win32_Battery");
-            foreach (ManagementObject obj in searcher.Get())
-            {
-                return Task.FromResult(Convert.ToInt32(obj["EstimatedChargeRemaining"]));
-            }
-        }
-        catch { }
-        return Task.FromResult(100);
-    }
-
-    public Task<string> GetBatteryTimeRemainingAsync() => Task.FromResult(string.Empty);
 }

@@ -14,7 +14,7 @@ using BndzFinder.Preferences.Localization;
 using BndzFinder.Preferences.ViewModels;
 using BndzFinder.StageManager.Controls;
 using BndzFinder.StageManager.ViewModels;
-using BndzFinder.Shell.Assets;
+using BndzFinder.Shell.Icons;
 using BndzFinder.Shell.Services;
 using BndzFinder.Theming;
 using BndzFinder.Theming.Customization;
@@ -55,6 +55,8 @@ public partial class App : Application
         ((App)Current)._host?.Services
         ?? throw new InvalidOperationException("Application host not initialized.");
 
+    public static Window? MainWindow { get; private set; }
+
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
         try
@@ -76,12 +78,16 @@ public partial class App : Application
 
             Services.GetRequiredService<IMacBrandingBootstrap>().EnsureBrandingAssets();
 
+            var appearance = Services.GetRequiredService<IMacAppearanceService>();
+            appearance.ApplyFromSettings(settings.Current);
+
             var taskbarLifecycle = Services.GetRequiredService<ITaskbarLifecycleService>();
             taskbarLifecycle.EnableReplacementMode();
 
             // Show the dock BEFORE any await — WinUI exits if no window exists during async startup.
             _dockWindow = new DockWindow();
             _dockWindow.Activate();
+            MainWindow = _dockWindow;
             _dockWindow.InitializePlacement();
             _dockWindow.ApplyVisibility(true);
             taskbarLifecycle.SyncWithDock(true);
@@ -112,9 +118,31 @@ public partial class App : Application
             bridge.MinimizeStarted += (_, json) =>
             {
                 var info = MinimizeStartedPayload.Deserialize(json);
-                if (info is not null)
-                    _minimizeOverlay?.Play(info);
+                if (info is null) return;
+
+                if (settings.Current.MinimizeIntoAppIcon)
+                {
+                    var target = _dockWindow?.ResolveMinimizeTarget(info.Handle);
+                    if (target is { } t)
+                    {
+                        info = new MinimizeStartedInfo
+                        {
+                            Handle = info.Handle,
+                            X = info.X,
+                            Y = info.Y,
+                            Width = info.Width,
+                            Height = info.Height,
+                            Effect = info.Effect,
+                            SnapshotBase64 = info.SnapshotBase64,
+                            TargetX = t.X,
+                            TargetY = t.Y
+                        };
+                    }
+                }
+
+                _minimizeOverlay?.Play(info);
             };
+            bridge.RestoreRequested += (_, hwnd) => _dockWindow?.RestoreWindow(hwnd);
             bridge.TrayIconsUpdated += (_, json) => finderVm.ApplyTrayIconsFromPayload(json);
             bridge.WindowListUpdated += (_, json) => stageVm.ApplyWindowsFromPayload(json);
             bridge.ProgressUpdated += (_, json) => dockVm.ApplyProgressFromPayload(json);
@@ -128,6 +156,7 @@ public partial class App : Application
                 finderVm.NotifyWidgetVisibility();
                 SyncTaskbar();
                 ApplyScreenRound(settings);
+                Services.GetRequiredService<IMacAppearanceService>().ApplyFromSettings(settings.Current);
                 _ = bridge.NotifySettingsReloadAsync();
             };
 
@@ -226,16 +255,27 @@ public partial class App : Application
             () => sp.GetRequiredService<ISettingsService>().Current.HideTaskbarAllMonitors,
             () => sp.GetRequiredService<ISettingsService>().Current.AutoHideTaskbarAtStartup));
         services.AddSingleton<IMacBrandingBootstrap, MacBrandingBootstrap>();
+        services.AddSingleton<IWallpaperService, WindowsWallpaperService>();
+        services.AddSingleton<IWallpaperApplicator, WindowsWallpaperApplicator>();
+        services.AddSingleton<IUiFontApplicator, WinUiFontApplicator>();
+        services.AddSingleton<IMacAppearanceService, MacAppearanceService>();
         services.AddSingleton<IThemePackResolver, ThemePackResolver>();
         services.AddSingleton<IThemePackService, ThemePackService>();
         services.AddSingleton<IWindowPreviewService, WindowPreviewService>();
         services.AddSingleton<IWindowCaptureService, WindowCaptureService>();
         services.AddSingleton<WeatherService>();
-        services.AddSingleton<ISystemMetricsService, WmiSystemMetricsService>();
         services.AddSingleton<TrayIconMirrorService>();
         services.AddSingleton<ITrayMirrorFacade, TrayMirrorFacade>();
+        services.AddSingleton<IIconPipeline>(sp =>
+        {
+            var packs = sp.GetRequiredService<IThemePackResolver>();
+            var settings = sp.GetRequiredService<ISettingsService>();
+            return new MacStyleIconPipeline(appIconShellPath: packs.ResolveIconShellPath(settings.Current));
+        });
+        services.AddSingleton<ISystemMetricsService, WindowsSystemMetricsService>();
         services.AddSingleton<DockViewModel>(sp => new DockViewModel(
             sp.GetRequiredService<ISettingsService>(),
+            iconPipeline: sp.GetRequiredService<IIconPipeline>(),
             overlays: sp.GetRequiredService<IShellOverlayController>(),
             capture: sp.GetRequiredService<IWindowCaptureService>(),
             windowPreview: sp.GetRequiredService<IWindowPreviewService>(),
@@ -254,11 +294,18 @@ public partial class App : Application
         });
         services.AddSingleton<LaunchpadViewModel>(sp => new LaunchpadViewModel(
             sp.GetRequiredService<ISettingsService>(),
-            overlays: sp.GetRequiredService<IShellOverlayController>()));
+            overlays: sp.GetRequiredService<IShellOverlayController>(),
+            iconPipeline: sp.GetRequiredService<IIconPipeline>()));
         services.AddSingleton<StageManagerViewModel>(sp => new StageManagerViewModel(
             sp.GetRequiredService<ISettingsService>(),
             sp.GetRequiredService<IWindowCaptureService>()));
-        services.AddSingleton<PreferencesViewModel>();
+        services.AddSingleton<PreferencesViewModel>(sp => new PreferencesViewModel(
+            sp.GetRequiredService<ISettingsService>(),
+            sp.GetRequiredService<IThemePackService>(),
+            sp.GetRequiredService<IThemePackResolver>(),
+            sp.GetRequiredService<IMacAppearanceService>(),
+            sp.GetRequiredService<IBackupService>(),
+            sp.GetRequiredService<IDisplayMonitorService>()));
     }
 }
 
@@ -279,6 +326,8 @@ public abstract class ShellOverlayWindow : Window
 public sealed class DockWindow : ShellOverlayWindow
 {
     private readonly DockViewModel _dockVm;
+    private readonly DockBarControl _dockBar;
+    private readonly ActivationBarWindow _activationBar = new();
     private readonly DispatcherTimer _edgeTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private bool _appBarRegistered;
 
@@ -288,7 +337,8 @@ public sealed class DockWindow : ShellOverlayWindow
         _dockVm = App.Services.GetRequiredService<DockViewModel>();
         _dockVm.UiRefresh = () => Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread()
             .TryEnqueue(_dockVm.RefreshLayout);
-        Content = new DockBarControl { ViewModel = _dockVm };
+        _dockBar = new DockBarControl { ViewModel = _dockVm };
+        Content = _dockBar;
         ConfigureChrome();
         ApplyBackdrop(_dockVm.Appearance?.Glass);
         ResizeToDockMetrics();
@@ -325,6 +375,15 @@ public sealed class DockWindow : ShellOverlayWindow
         ApplyVisibility(true);
     }
 
+    public (double X, double Y)? ResolveMinimizeTarget(long hwnd)
+    {
+        var itemId = _dockVm.FindItemIdForWindow(hwnd);
+        if (string.IsNullOrWhiteSpace(itemId)) return null;
+        return _dockBar.GetIconScreenCenter(itemId);
+    }
+
+    public void RestoreWindow(long hwnd) => WindowOperations.FocusWindow((nint)hwnd);
+
     private void ResizeToDockMetrics()
     {
         // Window spans full monitor width via AppBar; only pre-size height before registration.
@@ -351,6 +410,8 @@ public sealed class DockWindow : ShellOverlayWindow
             Core.Models.DockPosition.Top => point.Y <= threshold,
             _ => point.Y >= screenHeight - threshold
         };
+
+        _activationBar.Update(settings, dockVm.PointerNearEdge, screenWidth, screenHeight);
     }
 
     private void OnActivated(object sender, WindowActivatedEventArgs args)
@@ -423,7 +484,8 @@ public sealed class FinderWindow : ShellOverlayWindow
     {
         Title = "Bndz-Finder Finder";
         var vm = App.Services.GetRequiredService<FinderViewModel>();
-        Content = new FinderBarControl { ViewModel = vm };
+        var stageVm = App.Services.GetRequiredService<StageManagerViewModel>();
+        Content = new FinderBarControl { ViewModel = vm, StageManagerViewModel = stageVm };
         if (AppWindow.Presenter is OverlappedPresenter p)
         {
             p.IsResizable = false;

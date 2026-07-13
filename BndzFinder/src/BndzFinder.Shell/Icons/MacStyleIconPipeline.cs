@@ -121,10 +121,25 @@ public sealed class MacStyleIconPipeline : IIconPipeline
 
         using var paint = new SKPaint
         {
-            Color = new SKColor(0x2D, 0x9C, 0xDB),
+            Color = new SKColor(0x3A, 0x3A, 0x3C),
             IsAntialias = true
         };
         canvas.DrawRoundRect(rect, cornerRadius, cornerRadius, paint);
+
+        var label = Path.GetFileNameWithoutExtension(targetPath);
+        if (string.IsNullOrWhiteSpace(label)) label = "?";
+        label = label.Length > 2 ? label[..2].ToUpperInvariant() : label.ToUpperInvariant();
+
+        using var textPaint = new SKPaint
+        {
+            Color = SKColors.White,
+            IsAntialias = true,
+            TextAlign = SKTextAlign.Center,
+            TextSize = rect.Width * 0.38f,
+            Typeface = SKTypeface.FromFamilyName("Segoe UI Variable Display", SKFontStyleWeight.Bold, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright),
+            FakeBoldText = true
+        };
+        canvas.DrawText(label, rect.MidX, rect.MidY + textPaint.TextSize * 0.35f, textPaint);
     }
 
     private static string? ResolveSourceIconPath(string targetPath)

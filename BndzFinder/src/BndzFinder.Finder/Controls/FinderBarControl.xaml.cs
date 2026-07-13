@@ -1,4 +1,5 @@
 using BndzFinder.Finder.ViewModels;
+using BndzFinder.StageManager.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -14,6 +15,10 @@ public sealed partial class FinderBarControl : UserControl
         DependencyProperty.Register(nameof(ViewModel), typeof(FinderViewModel), typeof(FinderBarControl),
             new PropertyMetadata(null, OnViewModelChanged));
 
+    public static readonly DependencyProperty StageManagerViewModelProperty =
+        DependencyProperty.Register(nameof(StageManagerViewModel), typeof(StageManagerViewModel), typeof(FinderBarControl),
+            new PropertyMetadata(null, (_, _) => ((FinderBarControl)_).BindStageManager()));
+
     private Flyout? _controlCenterFlyout;
 
     public FinderViewModel? ViewModel
@@ -21,6 +26,17 @@ public sealed partial class FinderBarControl : UserControl
         get => (FinderViewModel?)GetValue(ViewModelProperty);
         set => SetValue(ViewModelProperty, value);
     }
+
+    public StageManagerViewModel? StageManagerViewModel
+    {
+        get => (StageManagerViewModel?)GetValue(StageManagerViewModelProperty);
+        set => SetValue(StageManagerViewModelProperty, value);
+    }
+
+    public Visibility StageStripVisibility =>
+        ViewModel?.ShowStageManagerInFinder == true && StageManagerViewModel is not null
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
     public FinderBarControl()
     {
@@ -38,6 +54,68 @@ public sealed partial class FinderBarControl : UserControl
         ViewModel.PropertyChanged += (_, args) => UpdateUI(args.PropertyName);
         Height = ViewModel.BarHeight;
         UpdateUI(null);
+        BindStageManager();
+    }
+
+    private void BindStageManager()
+    {
+        if (StageManagerViewModel is null) return;
+        StageManagerViewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName is nameof(StageManagerViewModel.Windows))
+                RenderStageStrip();
+        };
+        RenderStageStrip();
+    }
+
+    private void RenderStageStrip()
+    {
+        if (StageManagerViewModel is null) return;
+        StageStrip.Children.Clear();
+        var thumbSize = Math.Max(48, Math.Min(StageManagerViewModel.ThumbnailSize, 96));
+        foreach (var window in StageManagerViewModel.Windows)
+        {
+            var frame = new Border
+            {
+                Width = thumbSize,
+                Height = thumbSize * 0.62,
+                CornerRadius = new CornerRadius(6),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(80, 255, 255, 255)),
+                BorderThickness = new Thickness(1),
+                Background = new SolidColorBrush(Color.FromArgb(60, 30, 30, 30))
+            };
+
+            if (window.Thumbnail is { Length: > 0 })
+            {
+                try
+                {
+                    var temp = Path.Combine(Path.GetTempPath(), "BndzFinder", $"stage-{window.Hwnd}.png");
+                    Directory.CreateDirectory(Path.GetDirectoryName(temp)!);
+                    File.WriteAllBytes(temp, window.Thumbnail);
+                    frame.Child = new Image
+                    {
+                        Source = new BitmapImage(new Uri(temp)),
+                        Stretch = Stretch.UniformToFill
+                    };
+                }
+                catch { }
+            }
+
+            var button = new Button
+            {
+                Padding = new Thickness(0),
+                Background = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0)),
+                BorderThickness = new Thickness(0),
+                Content = frame,
+                Tag = window
+            };
+            button.Click += (_, _) =>
+            {
+                if (button.Tag is WindowThumbnailItem item)
+                    StageManagerViewModel.FocusWindowCommand.Execute(item);
+            };
+            StageStrip.Children.Add(button);
+        }
     }
 
     private void UpdateUI(string? property)
