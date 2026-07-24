@@ -29,26 +29,36 @@ public sealed class DockBehaviorService : IDockBehaviorService
 
         return
         [
-            SystemItem("finder", DockItemKind.SystemFinder, "Finder"),
-            SystemItem("launchpad", DockItemKind.SystemLaunchpad, "Launchpad"),
-            SystemItem("calendar", DockItemKind.SystemCalendar, "Calendar"),
-            SystemItem("trash", DockItemKind.SystemTrash, "Trash"),
-            SystemItem("weather", DockItemKind.SystemWeather, "Weather"),
-            SystemItem("prefs", DockItemKind.SystemPreferences, "Preferences")
+            SystemItem("finder", DockItemKind.SystemFinder, "Finder", 0),
+            SystemItem("launchpad", DockItemKind.SystemLaunchpad, "Launchpad", 1),
+            SystemItem("calendar", DockItemKind.SystemCalendar, "Calendar", 2),
+            SystemItem("weather", DockItemKind.SystemWeather, "Weather", 3),
+            SystemItem("prefs", DockItemKind.SystemPreferences, "System Settings", 4),
+            new DockItem
+            {
+                Id = "sep-end",
+                Kind = DockItemKind.Separator,
+                TargetPath = "separator",
+                DisplayName = "|",
+                IsPinned = true,
+                IsLocked = true,
+                SortOrder = 50
+            },
+            SystemItem("trash", DockItemKind.SystemTrash, "Trash", 51)
         ];
     }
 
     public bool CanDragReorder(BndzFinderSettings settings, DockItem item) =>
         !settings.LockIcons && !item.IsLocked;
 
-    private static DockItem SystemItem(string id, DockItemKind kind, string name) => new()
+    private static DockItem SystemItem(string id, DockItemKind kind, string name, int order) => new()
     {
         Id = id,
         Kind = kind,
         TargetPath = kind.ToString(),
         DisplayName = name,
         IsPinned = true,
-        SortOrder = (int)kind
+        SortOrder = order
     };
 }
 

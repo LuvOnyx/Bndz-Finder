@@ -78,8 +78,25 @@ public sealed partial class DockIconControl : UserControl
         if (layout.IsSeparator)
         {
             IconBorder.Visibility = Visibility.Collapsed;
-            Width = 2;
+            ReflectionLayer.Visibility = Visibility.Collapsed;
+            ShadowLayer.Visibility = Visibility.Collapsed;
+            BadgeLayer.Visibility = Visibility.Collapsed;
+            ProgressLayer.Visibility = Visibility.Collapsed;
+            RunningDot.Visibility = Visibility.Collapsed;
+            HoverLabel.Visibility = Visibility.Collapsed;
+            Width = 10;
             Height = size;
+            Root.Children.Clear();
+            Root.Children.Add(new Border
+            {
+                Width = 1,
+                Height = size * 0.55,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Background = new SolidColorBrush(Color.FromArgb(70, 255, 255, 255)),
+                CornerRadius = new CornerRadius(1)
+            });
+            return;
         }
 
         if (vm.BadgeCount is > 0)

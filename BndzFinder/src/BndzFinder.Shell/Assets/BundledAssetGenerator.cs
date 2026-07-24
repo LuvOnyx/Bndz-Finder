@@ -111,20 +111,31 @@ public static class BundledAssetGenerator
             Shader = SKShader.CreateLinearGradient(
                 new SKPoint(0, 0),
                 new SKPoint(0, height),
-                [new SKColor(255, 255, 255, 48), new SKColor(255, 255, 255, 12)],
+                [new SKColor(0x26, 0x26, 0x26, 140), new SKColor(0x26, 0x26, 0x26, 70)],
                 SKShaderTileMode.Clamp),
             IsAntialias = true
         };
-        canvas.DrawRoundRect(new SKRect(0, 8, width, height - 8), 48, 48, glass);
+        canvas.DrawRoundRect(new SKRect(0, 8, width, height - 8), 44, 44, glass);
 
         using var edge = new SKPaint
         {
-            Color = new SKColor(255, 255, 255, 36),
+            Color = new SKColor(255, 255, 255, 48),
             Style = SKPaintStyle.Stroke,
             StrokeWidth = 1.5f,
             IsAntialias = true
         };
-        canvas.DrawRoundRect(new SKRect(1, 9, width - 1, height - 9), 48, 48, edge);
+        canvas.DrawRoundRect(new SKRect(1, 9, width - 1, height - 9), 44, 44, edge);
+
+        using var highlight = new SKPaint
+        {
+            Shader = SKShader.CreateLinearGradient(
+                new SKPoint(0, 8),
+                new SKPoint(0, 28),
+                [new SKColor(255, 255, 255, 70), new SKColor(255, 255, 255, 0)],
+                SKShaderTileMode.Clamp),
+            IsAntialias = true
+        };
+        canvas.DrawRoundRect(new SKRect(2, 10, width - 2, 28), 40, 40, highlight);
 
         SavePng(surface, path);
     }

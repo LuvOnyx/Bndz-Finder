@@ -211,58 +211,73 @@ public sealed partial class DockBarControl : UserControl
     {
         if (!string.IsNullOrWhiteSpace(skinPath) && File.Exists(skinPath))
         {
-            var imageBrush = new ImageBrush
+            GlassFill.Background = new ImageBrush
             {
                 ImageSource = new BitmapImage(new Uri(skinPath)),
                 Stretch = Stretch.Fill,
-                Opacity = 0.35
+                Opacity = 0.45
             };
-            GlassBackdrop.Background = imageBrush;
             return;
         }
 
-        if (GlassBackdrop.Background is not AcrylicBrush)
+        if (GlassFill.Background is not AcrylicBrush)
         {
-            GlassBackdrop.Background = new AcrylicBrush
-            {
-                TintColor = Color.FromArgb(255, 26, 26, 26),
-                TintOpacity = 0.55,
-                TintLuminosityOpacity = 0.85,
-                FallbackColor = Color.FromArgb(255, 26, 26, 26)
-            };
+            DockAcrylic.TintColor = Color.FromArgb(255, 38, 38, 38);
+            DockAcrylic.TintOpacity = 0.32;
+            DockAcrylic.TintLuminosityOpacity = 0.92;
+            DockAcrylic.FallbackColor = Color.FromArgb(204, 42, 42, 42);
+            GlassFill.Background = DockAcrylic;
         }
     }
 
     private void ApplyGlass(GlassConfiguration glass)
     {
         GlassBackdrop.CornerRadius = new CornerRadius(glass.CornerRadius);
-        GlassBackdrop.Opacity = glass.Opacity;
+        GlassFill.CornerRadius = new CornerRadius(Math.Max(0, glass.CornerRadius - 1));
+        GlassHighlight.CornerRadius = GlassFill.CornerRadius;
+        GlassInnerEdge.CornerRadius = GlassFill.CornerRadius;
+        DockShadow.CornerRadius = new CornerRadius(glass.CornerRadius + 2);
+        DockShadow.Opacity = Math.Clamp(glass.ShadowOpacity, 0.2, 0.55);
+
         GlassBackdrop.BorderBrush = new SolidColorBrush(
-            Color.FromArgb((byte)(glass.BorderOpacity * 255), 255, 255, 255));
+            Color.FromArgb((byte)(Math.Clamp(glass.BorderOpacity, 0.12, 0.4) * 255), 255, 255, 255));
+        GlassHighlight.Opacity = Math.Clamp(glass.HighlightOpacity, 0.15, 0.5);
+
+        var tint = ParseColor(glass.TintColor, 1.0);
+        DockAcrylic.TintColor = Color.FromArgb(255, tint.R, tint.G, tint.B);
+        DockAcrylic.FallbackColor = Color.FromArgb(
+            (byte)(Math.Clamp(glass.Opacity, 0.55, 0.9) * 255),
+            tint.R, tint.G, tint.B);
 
         if (glass.Effect == GlassEffectKind.Translucent)
         {
             DockAcrylic.TintOpacity = glass.TintOpacity;
-            DockAcrylic.FallbackColor = ParseColor(glass.TintColor, glass.Opacity);
+            DockAcrylic.TintLuminosityOpacity = 0.85;
+            GlassBackdrop.Opacity = glass.Opacity;
         }
         else if (glass.Effect == GlassEffectKind.Mica)
         {
-            DockAcrylic.TintColor = ParseColor(glass.TintColor, 1.0);
             DockAcrylic.TintOpacity = glass.TintOpacity;
+            DockAcrylic.TintLuminosityOpacity = glass.Luminosity;
+            GlassBackdrop.Opacity = glass.Opacity;
         }
         else if (glass.Effect == GlassEffectKind.LiquidGlass)
         {
             var liquid = glass.LiquidGlass ?? new LiquidGlassParameters();
-            DockAcrylic.TintColor = Color.FromArgb(255, 16, 16, 20);
-            DockAcrylic.TintOpacity = 0.38 + liquid.Distortion * 0.12;
-            DockAcrylic.TintLuminosityOpacity = 0.9 + liquid.EdgeHighlight * 0.1;
-            GlassBackdrop.Opacity = Math.Clamp(glass.Opacity + liquid.Refraction * 0.08, 0.7, 0.95);
+            DockAcrylic.TintOpacity = Math.Clamp(0.22 + liquid.Distortion * 0.1, 0.18, 0.36);
+            DockAcrylic.TintLuminosityOpacity = Math.Clamp(0.9 + liquid.EdgeHighlight * 0.08, 0.88, 0.98);
+            GlassBackdrop.Opacity = Math.Clamp(glass.Opacity + liquid.Refraction * 0.05, 0.7, 0.92);
+            GlassHighlight.Opacity = Math.Clamp(0.3 + liquid.EdgeHighlight * 0.2, 0.25, 0.55);
         }
         else
         {
+            // Acrylic — Tahoe frosted default
             DockAcrylic.TintOpacity = glass.TintOpacity;
             DockAcrylic.TintLuminosityOpacity = glass.Luminosity;
+            GlassBackdrop.Opacity = glass.Opacity;
         }
+
+        GlassFill.Background = DockAcrylic;
     }
 
     private static Color ParseColor(string hex, double opacity)

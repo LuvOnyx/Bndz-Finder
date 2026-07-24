@@ -276,6 +276,7 @@ public partial class App : Application
             return new MacStyleIconPipeline(appIconShellPath: packs.ResolveIconShellPath(settings.Current));
         });
         services.AddSingleton<ISystemMetricsService, WindowsSystemMetricsService>();
+        services.AddSingleton<IForegroundAppService, ForegroundAppService>();
         services.AddSingleton<DockViewModel>(sp => new DockViewModel(
             sp.GetRequiredService<ISettingsService>(),
             iconPipeline: sp.GetRequiredService<IIconPipeline>(),
@@ -291,7 +292,9 @@ public partial class App : Application
                 sp.GetRequiredService<ISystemMetricsService>(),
                 sp.GetRequiredService<ITrayMirrorFacade>(),
                 sp.GetRequiredService<WeatherService>(),
-                sp.GetRequiredService<IThemePackResolver>());
+                sp.GetRequiredService<IThemePackResolver>(),
+                sp.GetRequiredService<IForegroundAppService>(),
+                sp.GetRequiredService<IShellOverlayController>());
             vm.PreferencesRequested += () => sp.GetRequiredService<IShellOverlayController>().ShowPreferences();
             return vm;
         });
