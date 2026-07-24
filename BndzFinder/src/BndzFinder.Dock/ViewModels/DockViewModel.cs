@@ -30,6 +30,7 @@ public partial class DockViewModel : ObservableObject
     private readonly IShellOverlayController? _overlays;
     private readonly IWindowCaptureService? _capture;
     private readonly IRunningAppSyncService _runningAppSync;
+    private readonly IFigmaAssetService _figma;
     private readonly HashSet<string> _runningApps = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, long> _itemWindowHandles = new(StringComparer.OrdinalIgnoreCase);
     private readonly System.Timers.Timer _runningAppTimer = new(2000) { AutoReset = true, Enabled = false };
@@ -81,7 +82,8 @@ public partial class DockViewModel : ObservableObject
         IWindowCaptureService? capture = null,
         IRunningAppSyncService? runningAppSync = null,
         IWindowPreviewService? windowPreview = null,
-        IThemePackResolver? themePacks = null)
+        IThemePackResolver? themePacks = null,
+        IFigmaAssetService? figma = null)
     {
         _settings = settings;
         _layoutEngine = layoutEngine ?? new PremiumDockLayoutEngine();
@@ -93,6 +95,7 @@ public partial class DockViewModel : ObservableObject
         _preview = new WindowPreviewCoordinator(settings.Current.PreviewDelayMs, settings.Current.PreviewSize);
         _windowPreview = windowPreview;
         _themePacks = themePacks;
+        _figma = figma ?? new FigmaAssetService();
         _overlays = overlays;
         _capture = capture;
         _runningAppSync = runningAppSync ?? new RunningAppSyncService();
@@ -456,6 +459,15 @@ public partial class DockViewModel : ObservableObject
         foreach (var assetId in new[] { "icon-finder", "icon-launchpad", "icon-calendar", "icon-trash", "icon-weather", "icon-preferences" })
         {
             var catalog = new AssetCatalogService();
+            var figmaPath = _figma.ResolveIcon(assetId);
+            if (figmaPath is not null)
+            {
+                var dest = catalog.ResolvePath(assetId);
+                Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+                File.Copy(figmaPath, dest, overwrite: true);
+                continue;
+            }
+
             var path = catalog.ResolvePath(assetId);
             SystemIconFallbackGenerator.EnsureFallback(assetId, path);
         }
@@ -499,7 +511,7 @@ public partial class DockViewModel : ObservableObject
             IconReflectionBlur = baseProfile.IconReflectionBlur,
             BaseIconSize = baseProfile.BaseIconSize,
             MaxIconSize = baseProfile.MaxIconSize,
-            DockSkinImagePath = _themePacks?.ResolveDockSkinPath(s),
+            DockSkinImagePath = _figma.ResolveDockGlass() ?? _themePacks?.ResolveDockSkinPath(s),
             TimeSkinImagePath = _themePacks?.ResolveTimeSkinPath(s)
         };
 
@@ -560,6 +572,9 @@ public partial class DockViewModel : ObservableObject
         };
         if (assetId is not null)
         {
+            var figma = _figma.ResolveIcon(assetId);
+            if (figma is not null) return figma;
+
             var path = catalog.ResolvePath(assetId);
             return SystemIconFallbackGenerator.EnsureFallback(assetId, path);
         }

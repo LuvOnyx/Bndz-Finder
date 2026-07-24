@@ -1,6 +1,7 @@
 using BndzFinder.Core.Design;
 using BndzFinder.Finder.ViewModels;
 using BndzFinder.Interop;
+using BndzFinder.Shell.Assets;
 using BndzFinder.StageManager.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -43,6 +44,30 @@ public sealed partial class FinderBarControl : UserControl
     public FinderBarControl()
     {
         InitializeComponent();
+        ApplyFigmaChrome();
+    }
+
+    private void ApplyFigmaChrome()
+    {
+        try
+        {
+            var figma = new FigmaAssetService();
+            var mark = figma.ResolveAppleMark();
+            if (mark is not null && File.Exists(mark))
+            {
+                AppleMarkImage.Source = new BitmapImage(new Uri(mark));
+                AppleMarkImage.Visibility = Visibility.Visible;
+                AppleMarkPath.Visibility = Visibility.Collapsed;
+            }
+
+            var tokens = figma.LoadTokens();
+            if (tokens?.MenuBar is { } menu && menu.Height > 0)
+                Height = menu.Height;
+        }
+        catch
+        {
+            // Keep XAML vector fallback.
+        }
     }
 
     private static void OnViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

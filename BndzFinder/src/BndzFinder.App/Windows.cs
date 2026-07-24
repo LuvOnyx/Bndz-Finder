@@ -14,6 +14,7 @@ using BndzFinder.Preferences.Localization;
 using BndzFinder.Preferences.ViewModels;
 using BndzFinder.StageManager.Controls;
 using BndzFinder.StageManager.ViewModels;
+using BndzFinder.Shell.Assets;
 using BndzFinder.Shell.Icons;
 using BndzFinder.Shell.Services;
 using BndzFinder.Theming;
@@ -77,6 +78,7 @@ public partial class App : Application
             var dockVm = Services.GetRequiredService<DockViewModel>();
 
             Services.GetRequiredService<IMacBrandingBootstrap>().EnsureBrandingAssets();
+            Services.GetRequiredService<IMacBrandingBootstrap>().ApplyFigmaTokens(settings.Current);
 
             var appearance = Services.GetRequiredService<IMacAppearanceService>();
             appearance.ApplyFromSettings(settings.Current);
@@ -258,6 +260,8 @@ public partial class App : Application
             () => sp.GetRequiredService<ISettingsService>().Current.HideTaskbarAllMonitors,
             () => sp.GetRequiredService<ISettingsService>().Current.AutoHideTaskbarAtStartup));
         services.AddSingleton<IMacBrandingBootstrap, MacBrandingBootstrap>();
+        services.AddSingleton<IAssetCatalogService, AssetCatalogService>();
+        services.AddSingleton<IFigmaAssetService, FigmaAssetService>();
         services.AddSingleton<IWallpaperService, WindowsWallpaperService>();
         services.AddSingleton<IWallpaperApplicator, WindowsWallpaperApplicator>();
         services.AddSingleton<IUiFontApplicator, WinUiFontApplicator>();
@@ -283,7 +287,8 @@ public partial class App : Application
             overlays: sp.GetRequiredService<IShellOverlayController>(),
             capture: sp.GetRequiredService<IWindowCaptureService>(),
             windowPreview: sp.GetRequiredService<IWindowPreviewService>(),
-            themePacks: sp.GetRequiredService<IThemePackResolver>()));
+            themePacks: sp.GetRequiredService<IThemePackResolver>(),
+            figma: sp.GetRequiredService<IFigmaAssetService>()));
         services.AddSingleton<FinderViewModel>(sp =>
         {
             var settings = sp.GetRequiredService<ISettingsService>();
