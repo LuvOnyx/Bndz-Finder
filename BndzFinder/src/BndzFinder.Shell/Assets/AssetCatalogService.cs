@@ -38,12 +38,14 @@ public sealed class AssetCatalogService : IAssetCatalogService
             LicenseStatus = "apple-design-resources",
             SourceUrl = "https://macosicons.com/resources"
         },
-        new() { Id = "icon-finder", Category = "system", RelativePath = "icons/system/finder.png", LicenseStatus = "macosicons", SourceUrl = "https://macosicons.com/" },
-        new() { Id = "icon-trash", Category = "system", RelativePath = "icons/system/trash.png", LicenseStatus = "macosicons", SourceUrl = "https://macosicons.com/" },
-        new() { Id = "icon-launchpad", Category = "system", RelativePath = "icons/system/launchpad.png", LicenseStatus = "macosicons", SourceUrl = "https://macosicons.com/" },
-        new() { Id = "icon-calendar", Category = "system", RelativePath = "icons/system/calendar.png", LicenseStatus = "macosicons", SourceUrl = "https://macosicons.com/" },
-        new() { Id = "icon-weather", Category = "system", RelativePath = "icons/system/weather.png", LicenseStatus = "macosicons", SourceUrl = "https://macosicons.com/" },
-        new() { Id = "icon-preferences", Category = "system", RelativePath = "icons/system/preferences.png", LicenseStatus = "macosicons", SourceUrl = "https://macosicons.com/" },
+        new() { Id = "icon-finder", Category = "system", RelativePath = "icons/system/finder.png", LicenseStatus = "figma-or-fallback", SourceUrl = "https://www.figma.com/design/60c5Bc1Hr12j9tmVFS5qvW/Bndz-Finder" },
+        new() { Id = "icon-trash", Category = "system", RelativePath = "icons/system/trash.png", LicenseStatus = "figma-or-fallback", SourceUrl = "https://www.figma.com/design/60c5Bc1Hr12j9tmVFS5qvW/Bndz-Finder" },
+        new() { Id = "icon-launchpad", Category = "system", RelativePath = "icons/system/launchpad.png", LicenseStatus = "figma-or-fallback", SourceUrl = "https://www.figma.com/design/60c5Bc1Hr12j9tmVFS5qvW/Bndz-Finder" },
+        new() { Id = "icon-calendar", Category = "system", RelativePath = "icons/system/calendar.png", LicenseStatus = "figma-or-fallback", SourceUrl = "https://www.figma.com/design/60c5Bc1Hr12j9tmVFS5qvW/Bndz-Finder" },
+        new() { Id = "icon-weather", Category = "system", RelativePath = "icons/system/weather.png", LicenseStatus = "figma-or-fallback", SourceUrl = "https://www.figma.com/design/60c5Bc1Hr12j9tmVFS5qvW/Bndz-Finder" },
+        new() { Id = "icon-preferences", Category = "system", RelativePath = "icons/system/preferences.png", LicenseStatus = "figma-or-fallback", SourceUrl = "https://www.figma.com/design/60c5Bc1Hr12j9tmVFS5qvW/Bndz-Finder" },
+        new() { Id = "figma-dock-glass", Category = "figma", RelativePath = "figma/dock/dock-glass.png", LicenseStatus = "figma", SourceUrl = "https://www.figma.com/design/60c5Bc1Hr12j9tmVFS5qvW/Bndz-Finder" },
+        new() { Id = "figma-apple-mark", Category = "figma", RelativePath = "figma/menu-bar/apple-mark.png", LicenseStatus = "figma", SourceUrl = "https://www.figma.com/design/60c5Bc1Hr12j9tmVFS5qvW/Bndz-Finder" },
         new() { Id = "shader-liquid-glass", Category = "shader", RelativePath = "shaders/liquid_glass.hlsl" }
     ];
 

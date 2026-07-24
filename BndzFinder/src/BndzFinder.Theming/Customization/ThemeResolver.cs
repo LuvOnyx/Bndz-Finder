@@ -74,7 +74,7 @@ public sealed class DockAppearanceInput
     public double DpiScale { get; init; } = 1.0;
     public double GlobalBlur { get; init; } = 0.6;
     public double DockOpacity { get; init; } = 0.82;
-    public double DockCornerRadius { get; init; } = 24;
+    public double DockCornerRadius { get; init; } = 22;
     public GlassEffectKind GlassEffect { get; init; } = GlassEffectKind.Acrylic;
     public bool IconReflectionEnabled { get; init; } = true;
     public double IconReflectionOpacity { get; init; } = 0.35;

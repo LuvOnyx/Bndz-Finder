@@ -14,6 +14,8 @@ public partial class FinderViewModel : ObservableObject
     private readonly ITrayMirrorFacade _trayMirror;
     private readonly WeatherService _weather;
     private readonly IThemePackResolver? _themePacks;
+    private readonly IForegroundAppService _foreground;
+    private readonly IShellOverlayController? _overlays;
     private bool _traySyncedFromIpc;
 
     [ObservableProperty] private double _cpuUsage;
@@ -27,9 +29,10 @@ public partial class FinderViewModel : ObservableObject
     [ObservableProperty] private string _dateText = DateTime.Now.ToString("ddd MMM d");
     [ObservableProperty] private string _weatherText = "—";
     [ObservableProperty] private string _keyboardLayout = "EN";
+    [ObservableProperty] private string _activeAppName = "Finder";
     [ObservableProperty] private IReadOnlyList<TrayProxyItem> _trayIcons = [];
     [ObservableProperty] private bool _isDark;
-    [ObservableProperty] private double _barHeight = 28;
+    [ObservableProperty] private double _barHeight = 24;
     [ObservableProperty] private string? _timeSkinImagePath;
 
     public bool ShowCpu => _settings.Current.ShowCpu;
@@ -54,13 +57,17 @@ public partial class FinderViewModel : ObservableObject
         ISystemMetricsService? metrics = null,
         ITrayMirrorFacade? trayMirror = null,
         WeatherService? weather = null,
-        IThemePackResolver? themePacks = null)
+        IThemePackResolver? themePacks = null,
+        IForegroundAppService? foreground = null,
+        IShellOverlayController? overlays = null)
     {
         _settings = settings;
         _metrics = metrics ?? new WindowsSystemMetricsService();
         _trayMirror = trayMirror ?? new TrayMirrorFacade(new TrayIconMirrorService());
         _weather = weather ?? new WeatherService();
         _themePacks = themePacks;
+        _foreground = foreground ?? new ForegroundAppService();
+        _overlays = overlays;
         BarHeight = settings.Current.FinderHeight;
         TimeSkinImagePath = _themePacks?.ResolveTimeSkinPath(settings.Current);
         _settings.SettingsChanged += (_, _) =>
@@ -79,6 +86,62 @@ public partial class FinderViewModel : ObservableObject
     public event Action? PreferencesRequested;
 
     public void OpenPreferences() => PreferencesRequested?.Invoke();
+
+    public void ToggleDock() => _overlays?.ToggleDock();
+    public void ShowLaunchpad() => _overlays?.ShowLaunchpad();
+    public void ShowStageManager() => _overlays?.ToggleStageManager();
+
+    public void OpenExplorer()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe") { UseShellExecute = true });
+    }
+
+    public void OpenSearch()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        // Windows Search / Start
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", "shell:::{2559a1f8-21d7-11d4-bdaf-00c04f60b9f0}")
+        {
+            UseShellExecute = true
+        });
+    }
+
+    public void OpenActionCenter()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("ms-actioncenter:") { UseShellExecute = true });
+    }
+
+    public void OpenTaskManager()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("taskmgr.exe") { UseShellExecute = true });
+    }
+
+    public void OpenSystemInfo()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("ms-settings:about") { UseShellExecute = true });
+    }
+
+    public void LockWorkstation()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        LockWorkStation();
+    }
+
+    public void SleepDisplay()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        SendMessage(new nint(0xFFFF), 0x0112, new nint(0xF170), new nint(2));
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool LockWorkStation();
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern nint SendMessage(nint hWnd, int msg, nint wParam, nint lParam);
 
     public void NotifyWidgetVisibility()
     {
@@ -134,6 +197,7 @@ public partial class FinderViewModel : ObservableObject
                 BatteryTimeRemaining = await _metrics.GetBatteryTimeRemainingAsync().ConfigureAwait(false);
                 ClockText = DateTime.Now.ToString(_settings.Current.TimeFormat);
                 DateText = DateTime.Now.ToString(_settings.Current.DateFormat);
+                ActiveAppName = _foreground.GetForegroundApp()?.ProcessName ?? "Finder";
                 if (_settings.Current.ShowWeather)
                 {
                     await _weather.RefreshAsync(

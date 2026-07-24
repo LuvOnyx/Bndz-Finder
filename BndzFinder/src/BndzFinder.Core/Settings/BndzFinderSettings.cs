@@ -9,16 +9,16 @@ public sealed class BndzFinderSettings
     // Global
     public double DpiScale { get; set; } = 1.0;
     public ThemeMode ThemeMode { get; set; } = ThemeMode.Auto;
-    public string AccentColor { get; set; } = "#0078D4";
+    public string AccentColor { get; set; } = "#0A84FF";
     public string Language { get; set; } = "en";
     public StartupMode StartupMode { get; set; } = StartupMode.None;
 
     // MyDock
     public DockPosition DockPosition { get; set; } = DockPosition.Bottom;
     public DockDisplayMode DockDisplayMode { get; set; } = DockDisplayMode.Normal;
-    public int IconSize { get; set; } = 48;
-    public int IconSpace { get; set; } = 8;
-    public int IconMaxSize { get; set; } = 72;
+    public int IconSize { get; set; } = 52;
+    public int IconSpace { get; set; } = 6;
+    public int IconMaxSize { get; set; } = 78;
     public IconHoverEffect IconEffect { get; set; } = IconHoverEffect.Scale;
     public bool IconImmersion { get; set; }
     public bool LockIcons { get; set; }
@@ -42,14 +42,14 @@ public sealed class BndzFinderSettings
     public bool AutoHideTaskbarAtStartup { get; set; } = true;
     public bool WindowsBorderMode { get; set; } = true;
     public bool CenterNewWindows { get; set; }
-    public GlassEffect DockGlassEffect { get; set; } = GlassEffect.Acrylic;
+    public GlassEffect DockGlassEffect { get; set; } = GlassEffect.LiquidGlass;
     public LiquidGlassSettings LiquidGlass { get; set; } = new();
-    public double DockOpacity { get; set; } = 0.82;
-    public double DockCornerRadius { get; set; } = 24;
+    public double DockOpacity { get; set; } = 0.78;
+    public double DockCornerRadius { get; set; } = 22;
 
     // MyFinder
     public bool FinderEnabled { get; set; } = true;
-    public int FinderHeight { get; set; } = 28;
+    public int FinderHeight { get; set; } = 24;
     public int FinderOffsetY { get; set; }
     public ThemeMode FinderThemeMode { get; set; } = ThemeMode.Auto;
     public bool FinderShowAllScreens { get; set; }
@@ -99,7 +99,7 @@ public sealed class BndzFinderSettings
     public bool StageManagerMediaPauseResume { get; set; } = true;
 
     // Theming
-    public double GlobalBlurValue { get; set; } = 0.6;
+    public double GlobalBlurValue { get; set; } = 0.78;
     public bool IconReflectionEnabled { get; set; } = true;
     public double IconReflectionOpacity { get; set; } = 0.35;
     public double IconReflectionBlur { get; set; } = 0.5;
